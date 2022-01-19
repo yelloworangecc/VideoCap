@@ -7,5 +7,10 @@ set_property(GLOBAL PROPERTY OS_FOLDERS ON)
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
-add_executable(VideoCap WIN32 main.cpp VideoDevice.cpp)
-target_link_libraries(VideoCap strmiids.lib ${OpenCV_LIBS})
+add_executable(VideoCap WIN32 main.cpp 
+               MainWindow.h MainWindow.cpp
+               VideoStreamRender.h VideoStreamRender.cpp 
+               VideoFileWriter.h VideoFileWriter.cpp
+               WinMsgHandle.h WinMsgHandle.cpp
+	       VideoCap.rc)
+target_link_libraries(VideoCap strmiids.lib d2d1.lib dwrite.lib ${OpenCV_LIBS})

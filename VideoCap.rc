@@ -1,0 +1,13 @@
+#include "resource.h"
+
+IDI_ICON_APP        ICON            "kns.ico"
+IDB_INFO_RED        BITMAP          "info_red.bmp"
+IDB_INFO_GRN        BITMAP          "info_grn.bmp"
+
+IDR_ACCELERATOR_TALBE ACCELERATORS
+{
+    0x64,   ID_SHORTCUT_SWITCH_DEVICE, VIRTKEY, CONTROL    // ctrl-d
+    0x66,   ID_SHORTCUT_SWITCH_FORMAT, VIRTKEY, CONTROL    // ctrl-f
+    0x73,   ID_SHORTCUT_SAVE_IMAGE, VIRTKEY, CONTROL    // ctrl-s
+    0x63,   ID_SHORTCUT_CAPTURE, VIRTKEY, CONTROL    // ctrl-c
+}
