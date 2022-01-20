@@ -80,7 +80,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
             xPos = LOWORD(lParam); 
             yPos = HIWORD(lParam);
             std::cout<<xPos<<','<<yPos<<std::endl;
-            MessageBox(hwnd,L"Content",L"Help",MB_OK);
+            //MessageBox(hwnd,L"Content",L"Help",MB_OK);
 
             break;
         case WM_HSCROLL:
@@ -157,13 +157,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
                     std::cout<<"WM_COMMAND:ID_SHORTCUT_CAPTURE"<<std::endl;
                     return 0;
                 case IDC_DEVICE_COMBO:
-                    std::cout<<"WM_COMMAND:IDC_DEVICE_COMBO"<<std::endl;
                     if(highWP == CBN_SELCHANGE)
-                    { 
-                        int ItemIndex = (int)SendMessage(hCtrl, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
-                        TCHAR ListItem[256];
-                        SendMessage(hCtrl, (UINT) CB_GETLBTEXT, (WPARAM) ItemIndex, (LPARAM) ListItem);
-                        (TCHAR)MessageBox(NULL, (LPCWSTR) ListItem, TEXT("Item Selected"), MB_OK);                        
+                    {
+                        std::cout<<"WM_COMMAND:IDC_DEVICE_COMBO-CBN_SELCHANGE"<<std::endl;
+                        int index = (int)SendMessage(hCtrl, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
+                        wchar_t text[256];
+                        SendMessage(hCtrl, (UINT) CB_GETLBTEXT, (WPARAM) index, (LPARAM) text);
+                        //pMsgHandle->open(text);
                     }
                     return 0;
             }

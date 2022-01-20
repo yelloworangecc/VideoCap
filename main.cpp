@@ -2,9 +2,9 @@
 #define UNICODE
 #endif
 
-#include <stdio.h>  // printf, _dup2
-#include <io.h>     // _open_osfhandle
 #include <iostream>
+#include <cstdio>
+#include <vector>
 #include <windows.h>
 #include "MainWindow.h"
 #include "VideoStreamRender.h"
@@ -18,45 +18,61 @@ int WINAPI wWinMain(HINSTANCE hInstance,
 {
     wchar_t ** argv;
     int argc;
-    wchar_t* pDeviceName;
-
-    argv = CommandLineToArgvW(pCmdLine,&argc);
+    VideoStreamRender vsr;
+    wchar_t* pDeviceName = NULL;
+    int deviceIndex = 0;
+    int formatIndex = 0;
+    int resolutionIndex = 0;
     
-    //AttachConsole(ATTACH_PARENT_PROCESS);
-    //freopen("conout$","w",stdout);
-
+    //parse command line
+    argv = CommandLineToArgvW(pCmdLine,&argc);
     if (0 == wcscmp(argv[0], L"list"))
     {
-        VideoStreamRender::listDevice();
+        AllocConsole();
+        freopen("conout$","w",stdout);
+        vsr.listDevice();
+        system("pause");
+        FreeConsole();
         return 0;
     }
-    else if (0 == wcscmp(argv[0], L"open") && argv[1] != NULL)
+    //user specified device
+    if (argc == 2 && 0 == wcscmp(argv[0], L"open"))
     {
         pDeviceName = argv[1];
     }
-    else
-    {
-        std::wcout<<L"Usage: this.exe list             => list all video devices"<<std::endl;
-        std::wcout<<L"       this.exe open device_name => open target video device"<<std::endl;
-        return 0;
-    }
+    
+    RegistWinMsgHandle(vsr);
+    
+    std::vector<std::wstring> deviceList = vsr.listDevice();
+    if (deviceList.empty()) return -1;
 
-    VideoStreamRender vsr(pDeviceName);
-    vsr.open();
-    vsr.listFormat();
-    vsr.setFormat(MEDIASUBTYPE_YUY2,FORMAT_VideoInfo,640,480);
+    //is user specified device
+    if (pDeviceName != NULL) deviceIndex = vsr.getDeviceIndex(pDeviceName);
+    vsr.open(pDeviceName != NULL  ? pDeviceName:deviceList[0]);
+    if(!vsr.isOpen()) return -1;
+    
+    std::vector<std::wstring> formatList = vsr.listFormat();
+    if (formatList.empty()) return -1;
+    
+    std::vector<std::wstring> resolutionList = vsr.listResolution();
+    if (resolutionList.empty()) return -1;
+
 
     MainWindow mainWindow(hInstance,640, 480);
     mainWindow.addIcon();
-    mainWindow.addDeviceCombo();
+    mainWindow.addDeviceCombo(deviceList, deviceIndex);
+    mainWindow.addFormatCombo(formatList, formatIndex);
+    mainWindow.addResolutionCombo(resolutionList,resolutionIndex);
     mainWindow.addSnapButton();
     mainWindow.addCapButton();
 
+    //TO DO: implement set interface
+    //vsr.set(deviceIndex,formatIndex,resolutionIndex);
     vsr.render(mainWindow.getHandle(), 30);
-    vsr.mixBitmap(hInstance, L"IDB_INFO_GRN");
     if(!vsr.isRun()) return 0;
+    vsr.mixBitmap(hInstance, L"IDB_INFO_GRN");
 
-    RegistWinMsgHandle(vsr);
+    
     HACCEL hAccel = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDR_ACCELERATOR_TALBE));
 
     ShowWindow(mainWindow.getHandle(), SW_SHOW);

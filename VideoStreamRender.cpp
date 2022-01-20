@@ -2,6 +2,7 @@
 #define UNICODE
 #endif
 #include <iostream>
+#include <vector>
 #include <windows.h>
 #include <strmif.h>
 #include <comsvcs.h>
@@ -12,6 +13,23 @@
 #define CHECK_HR_FAILED(statement) if(FAILED(hr)) {statement;return;}
 
 bool VideoStreamRender::bCapStarted = false;
+
+const VideoType VideoStreamRender::allVideoTypes[] = { 
+    {L"IYUV",  MEDIASUBTYPE_IYUV} , 
+    {L"RGB1",  MEDIASUBTYPE_RGB1} , 
+    {L"RGB24", MEDIASUBTYPE_RGB24} , 
+    {L"RGB32", MEDIASUBTYPE_RGB32} , 
+    {L"RGB4",  MEDIASUBTYPE_RGB4} , 
+    {L"RGB555",MEDIASUBTYPE_RGB555} , 
+    {L"RGB565",MEDIASUBTYPE_RGB565} , 
+    {L"RGB8",  MEDIASUBTYPE_RGB8} , 
+    {L"YUY2",  MEDIASUBTYPE_YUY2} , 
+    {L"YV12",  MEDIASUBTYPE_YV12} , 
+    {L"YVU9",  MEDIASUBTYPE_YVU9} , 
+    {L"YVYU",  MEDIASUBTYPE_YVYU} ,
+    {L"MJPG",  MEDIASUBTYPE_MJPG}
+};
+
 
 DWORD WINAPI VideoStreamRender::CapProc(LPVOID lpParam)
 {
@@ -27,37 +45,80 @@ DWORD WINAPI VideoStreamRender::CapProc(LPVOID lpParam)
     return 0;
 }
 
-void VideoStreamRender::listDevice()
+GUID VideoStreamRender::findVideoType(const std::wstring & name)
 {
-    ICreateDevEnum *pDevEnum;
-    IEnumMoniker *pEnumMoniker;
+    for (int i = 0; i < sizeof(allVideoTypes)/sizeof(allVideoTypes[0]); ++ i)
+    {
+        if (allVideoTypes[i].name.compare(name) == 0) return allVideoTypes[i].guid;
+    }
+    return GUID_NULL;
+}
+
+std::wstring VideoStreamRender::findVideoType(const GUID & guid)
+{
+    for (int i = 0; i < sizeof(allVideoTypes)/sizeof(allVideoTypes[0]); ++ i)
+    {
+        if (allVideoTypes[i].guid == guid) return allVideoTypes[i].name;
+    }
+    wchar_t buffer[GUID_STRING_SIZE] = { 0 };
+    StringFromGUID2(guid, buffer, GUID_STRING_SIZE);
+    return std::wstring(buffer);
+}
+
+GUID VideoStreamRender::findFormatType(const std::wstring & name)
+{
+    if (name == std::wstring(L"FORMAT_VideoInfo"))
+    {
+        return FORMAT_VideoInfo;
+    }
+    if (name == std::wstring(L"FORMAT_VideoInfo"))
+    {
+        return FORMAT_VideoInfo2;
+    }
+    return GUID_NULL;
+}
+
+std::wstring VideoStreamRender::findFormatType(const GUID & guid)
+{
+    if (guid == FORMAT_VideoInfo)
+    {
+        return std::wstring(L"FORMAT_VideoInfo");
+    }
+    if (guid == FORMAT_VideoInfo2)
+    {
+        return std::wstring(L"FORMAT_VideoInfo2");
+    }
+    wchar_t buffer[GUID_STRING_SIZE] = { 0 };
+    StringFromGUID2(guid, buffer, GUID_STRING_SIZE);
+    return std::wstring(buffer);
+}
+
+VideoStreamRender::VideoStreamRender():
+    pEnumMoniker(NULL),pStreamConfig(NULL)
+{
+    CoInitialize(0);
+    createDeviceEnumerator();
+}
+    
+VideoStreamRender::~VideoStreamRender()
+{
+    releaseDeviceEnumerator();
+}
+
+const std::vector<std::wstring>& VideoStreamRender::listDevice()
+{
     IMoniker *pMoniker;
     IPropertyBag *pPropertyBag;
     VARIANT var;
     HRESULT hr;
     
-    CoInitialize(0);
-    
-    hr = CoCreateInstance(CLSID_SystemDeviceEnum,
-                          NULL,  
-                          CLSCTX_INPROC_SERVER, 
-                          IID_PPV_ARGS(&pDevEnum)
-                          );
-    CHECK_HR_FAILED(std::cout<<"CreateDevEnum failed "<<hr<<std::endl;CoUninitialize();)
+    deviceList.clear();
 
-    hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory,
-                                         &pEnumMoniker,
-                                         0);
-    if (hr == S_FALSE)
-    {
-        hr = VFW_E_NOT_FOUND;
-        std::cout<<"No device found"<<std::endl;
-    }
-    CHECK_HR_FAILED(std::cout<<"Create CreateClassEnumerator failed"<<std::endl;CoUninitialize();)
-
-    pDevEnum->Release();
+    if (pEnumMoniker == NULL) createDeviceEnumerator();
+    if (pEnumMoniker == NULL) return deviceList;
 
     //list device
+    pEnumMoniker->Reset();
     while (pEnumMoniker->Next(1, &pMoniker, NULL) == S_OK)
     {
         hr = pMoniker->BindToStorage(0, 0, IID_PPV_ARGS(&pPropertyBag));
@@ -73,65 +134,43 @@ void VideoStreamRender::listDevice()
         if (SUCCEEDED(hr))
         {
             std::wcout<<var.bstrVal<<std::endl;
+            uniqueAppend(deviceList,var.bstrVal);
+            //deviceList.emplace_back(var.bstrVal);
             VariantClear(&var); 
         }
         pPropertyBag->Release();
         pMoniker->Release();
     }
-
-    pEnumMoniker->Release();
-    CoUninitialize();
+    return deviceList;
 }
 
-VideoStreamRender::VideoStreamRender(const std::wstring        &_deviceName):
-    deviceName(deviceName)
+int VideoStreamRender::getDeviceIndex(std::wstring deviceName)
 {
-    CoInitialize(0);
-    createD2DRes();
-}
-    
-VideoStreamRender::VideoStreamRender(const wchar_t *pDeviceName):
-    deviceName(pDeviceName)
-{
-    CoInitialize(0);
-    createD2DRes();
-}
-    
-VideoStreamRender::~VideoStreamRender()
-{
-     CoUninitialize();
+    for (int i = 0; i < deviceList.size(); ++i)
+    {
+        if (deviceList[i] == deviceName) return i;
+    }
+    return 0;
 }
 
-void VideoStreamRender::open()
+void VideoStreamRender::open(const std::wstring deviceName)
 {
-    ICreateDevEnum *pDevEnum;
-    IEnumMoniker *pEnumMoniker;
+    std::cout<<"IN open"<<std::endl;
     IMoniker *pMoniker;
-	IPropertyBag *pPropertyBag;
+    IPropertyBag *pPropertyBag;
     HRESULT hr;
     VARIANT var;
+    
     bool bFindMoniker = false;
     bOpen = false;
+
+    //if opened, close it first
+    if (isOpen()) close();
     
-    //enum video devices
-    hr = CoCreateInstance(CLSID_SystemDeviceEnum,
-                          NULL,  
-                          CLSCTX_INPROC_SERVER, 
-                          IID_PPV_ARGS(&pDevEnum)
-                          );
-    CHECK_HR_FAILED(std::cout<<"CreateDevEnum failed "<<hr<<std::endl)
-
-    hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory,
-                                         &pEnumMoniker,
-                                         0);
-    if (hr == S_FALSE)
-    {
-        hr = VFW_E_NOT_FOUND;
-        std::cout<<"No device found"<<std::endl;
-    }
-    CHECK_HR_FAILED(std::cout<<"Create CreateClassEnumerator failed"<<std::endl)
-
-    pDevEnum->Release();
+    //enum video devices again
+    if (pEnumMoniker == NULL) createDeviceEnumerator();
+    if (pEnumMoniker == NULL) return;
+    pEnumMoniker->Reset();
 
     //find device by name or descritpion
     while (pEnumMoniker->Next(1, &pMoniker, NULL) == S_OK)
@@ -161,7 +200,11 @@ void VideoStreamRender::open()
     }
 
     //device not found
-    if (!bFindMoniker) return;
+    if (!bFindMoniker) 
+    {
+        std::cout<<"Device not found"<<std::endl;
+        return;
+    }
 
     //get video source filter
     hr = pMoniker->BindToObject(0, 0, IID_IBaseFilter, (void**)&pCaptureFilter);
@@ -195,21 +238,129 @@ void VideoStreamRender::open()
     bOpen = true;
 }
 
+const std::vector<std::wstring>& VideoStreamRender::listFormat()
+{
+    HRESULT hr;
+    int piCount, piSize;
+    AM_MEDIA_TYPE *pMediaType;
+    VIDEO_STREAM_CONFIG_CAPS scc;
+
+    formatList.clear();
+    
+    if (pStreamConfig == NULL) createStreamConfiger();
+    if (pStreamConfig == NULL) return formatList;
+
+    hr = pStreamConfig->GetNumberOfCapabilities(&piCount, &piSize);
+    if (FAILED(hr))
+    {
+        std::cout << "IAMStreamConfig.GetNumberOfCapabilities failed" << std::endl;
+        return formatList;
+    }
+
+    //loop all supported media type
+    for (int i = 0; i < piCount; i++)
+    {
+        //FrameFormat fmt;
+        pStreamConfig->GetStreamCaps(i, &pMediaType, reinterpret_cast<BYTE *>(&scc));
+
+        std::wstring videoType = findVideoType(pMediaType->subtype);
+        std::wstring headerType = findFormatType(pMediaType->formattype);
+        uniqueAppend(formatList, videoType+L" "+headerType);
+        std::wcout<<videoType<<L" "<<headerType<<std::endl;
+    }
+    
+    return formatList;
+}
+
+const std::vector<std::wstring>& VideoStreamRender::listResolution()
+{
+    HRESULT hr;
+    int piCount, piSize;
+    AM_MEDIA_TYPE *pMediaType;
+    VIDEO_STREAM_CONFIG_CAPS scc;
+    
+    resolutionList.clear();
+    
+    if (pStreamConfig == NULL) createStreamConfiger();
+    if (pStreamConfig == NULL) return resolutionList;
+
+    //loop all supported media type
+    hr = pStreamConfig->GetNumberOfCapabilities(&piCount, &piSize);
+    if (FAILED(hr))
+    {
+        std::cout<<"IAMStreamConfig.GetNumberOfCapabilities failed"<<std::endl;
+        return resolutionList;
+    }
+    
+    for (int i = 0; i < piCount; i++)
+    {
+        //FrameFormat fmt;
+        pStreamConfig->GetStreamCaps(i, &pMediaType, reinterpret_cast<BYTE *>(&scc));
+        if (FORMAT_VideoInfo == pMediaType->formattype)
+        {
+
+            VIDEOINFOHEADER *pvideoInfo = (VIDEOINFOHEADER *)pMediaType->pbFormat;
+            std::wstringstream sstream;
+            sstream<<pvideoInfo->bmiHeader.biWidth<<L" "<<pvideoInfo->bmiHeader.biHeight;
+            uniqueAppend(resolutionList, sstream.str());
+            std::wcout<<sstream.str()<<std::endl;
+        }
+        else if (FORMAT_VideoInfo2 == pMediaType->formattype)
+        {
+            VIDEOINFOHEADER2 *pvideoInfo = (VIDEOINFOHEADER2 *)pMediaType->pbFormat;
+            std::wstringstream sstream;
+            sstream<<pvideoInfo->bmiHeader.biWidth<<L" "<<pvideoInfo->bmiHeader.biHeight;
+            uniqueAppend(resolutionList, sstream.str());
+            std::wcout<<sstream.str()<<std::endl;
+        }
+    }
+    
+    return resolutionList;
+}
+
 void VideoStreamRender::close()
 {
+    //stage 1, stop and release render related members
+    if (isRun())
+    {
+        //stop video stream
+        pMediaControl->Stop();
+        //release render related members
+        pMediaControl->Release();
+        pVMRControl->Release();
+        pMediaControl = NULL;
+        pVMRControl = NULL;
+    }
+    
+    //stage 2, release all filter and device related members
     if (isOpen())
     {
-        pCaptureFilter->Release();
+        //release filters
+        IEnumFilters *pEnum = NULL;
+        HRESULT hr = pGraphBuilder->EnumFilters(&pEnum);
+        if (SUCCEEDED(hr))
+        {
+            IBaseFilter *pFilter = NULL;
+            while (S_OK == pEnum->Next(1, &pFilter, NULL))
+             {
+                 // remove and release one filter
+                 pGraphBuilder->RemoveFilter(pFilter);
+                 pFilter->Release();
+                 
+                 pEnum->Reset();
+            }
+            pEnum->Release();
+        }
+        pCaptureFilter = NULL;
+        pVMRFilter = NULL;
+        //release device related members
         pGraphBuilder->Release();
         pCaptureGraphBuilder->Release();
     }
-    if (isRun())
-    {
-        pMediaControl->Stop();
-        pMediaControl->Release();
-        pVMRControl->Release();
-        pVMRFilter->Release();
-    }
+    
+    releaseStreamConfiger();
+    releaseDeviceEnumerator();
+    
     bOpen = false;
     bRun = false;
 }
@@ -228,62 +379,6 @@ void* VideoStreamRender::getImage()
     }
     
     return reinterpret_cast<void*>(lpCurrImage);
-}
-
-void VideoStreamRender::listFormat()
-{
-    IPin *pCapPin;
-    IAMStreamConfig *pStreamConfig;
-    HRESULT hr;
-    int piCount, piSize;
-    AM_MEDIA_TYPE *pMediaType;
-    VIDEO_STREAM_CONFIG_CAPS scc;
-    bool bFind = false;
-
-    if (!isOpen()) return;
-    
-    //get capture pin
-    pCapPin = getCapturePin();
-    if (pCapPin == nullptr)
-    {
-        std::cout<<"find Capture pin failed"<<std::endl;
-        return;
-    }
-
-    //query stream config interface
-    hr = pCapPin->QueryInterface(IID_IAMStreamConfig, (void**)&pStreamConfig);
-    CHECK_HR_FAILED(std::cout<<"IPin.QueryInterface IAMStreamConfig failed"<<std::endl)
-
-    //loop all supported media type
-    hr = pStreamConfig->GetNumberOfCapabilities(&piCount, &piSize);
-    CHECK_HR_FAILED(std::cout<<"IAMStreamConfig.GetNumberOfCapabilities failed"<<std::endl)
-    for (int i = 0; i < piCount; i++)
-    {
-        FrameFormat fmt;
-        pStreamConfig->GetStreamCaps(i, &pMediaType, reinterpret_cast<BYTE *>(&scc));
-        if (FORMAT_VideoInfo == pMediaType->formattype)
-        {
-
-            VIDEOINFOHEADER *pvideoInfo = (VIDEOINFOHEADER *)pMediaType->pbFormat;
-            fmt.videoType = pMediaType->subtype;
-            fmt.formatType = FORMAT_VideoInfo;
-            fmt.width = pvideoInfo->bmiHeader.biWidth;
-            fmt.height = pvideoInfo->bmiHeader.biHeight;
-            fmt.rate = pvideoInfo->AvgTimePerFrame;
-        }
-        else if (FORMAT_VideoInfo2 == pMediaType->formattype)
-        {
-            VIDEOINFOHEADER2 *pvideoInfo = (VIDEOINFOHEADER2 *)pMediaType->pbFormat;
-            fmt.videoType = pMediaType->subtype;
-            fmt.formatType = FORMAT_VideoInfo2;
-            fmt.width = pvideoInfo->bmiHeader.biWidth;
-            fmt.height = pvideoInfo->bmiHeader.biHeight;
-            fmt.rate = pvideoInfo->AvgTimePerFrame;
-        }
-        printFormat(fmt);
-    }
-    
-    pStreamConfig->Release();
 }
 
 void VideoStreamRender::setFormat(const GUID &videoType,
@@ -469,10 +564,88 @@ void VideoStreamRender::capture(const bool bStart)
     }
 }
 
-bool VideoStreamRender::isPointed(int xPos, int yPos)
+//bool VideoStreamRender::isPointed(int xPos, int yPos)
+//{
+//    return true;
+//}
+
+void VideoStreamRender::createDeviceEnumerator()
 {
-    return true;
+    std::cout<<"IN createDeviceEnumerator"<<std::endl;
+    HRESULT hr;
+    ICreateDevEnum *pDevEnum;
+    hr = CoCreateInstance(CLSID_SystemDeviceEnum,
+                          NULL,  
+                          CLSCTX_INPROC_SERVER, 
+                          IID_PPV_ARGS(&pDevEnum)
+                          );
+    if (FAILED(hr))
+    {
+        std::cout<<"CreateDevEnum failed "<<hr<<std::endl;
+        pEnumMoniker = NULL;
+        return;
+    }
+
+    hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory,
+                                         &pEnumMoniker,
+                                         0);
+    if (hr == S_FALSE)
+    {
+        hr = VFW_E_NOT_FOUND;
+        std::cout<<"No device found"<<std::endl;
+    }
+    
+    if (FAILED(hr))
+    {
+        std::cout<<"Create CreateClassEnumerator failed"<<std::endl;
+        pEnumMoniker = NULL;
+    }
+
+    pDevEnum->Release();
 }
+
+void VideoStreamRender::releaseDeviceEnumerator()
+{
+    if (pEnumMoniker != NULL) pEnumMoniker->Release();
+    pEnumMoniker = NULL;
+}
+
+void VideoStreamRender::createStreamConfiger()
+{
+    std::cout<<"IN createDeviceEnumerator"<<std::endl;
+    IPin *pCapPin;
+    HRESULT hr;
+
+    if (!isOpen()) 
+    {
+        pStreamConfig = NULL;
+        return;
+    }
+    
+    //get capture pin
+    pCapPin = getCapturePin();
+    if (pCapPin == nullptr)
+    {
+        std::cout<<"find Capture pin failed"<<std::endl;
+        pStreamConfig = NULL;
+        return;
+    }
+
+    //query stream config interface
+    hr = pCapPin->QueryInterface(IID_IAMStreamConfig, (void**)&pStreamConfig);
+    if (FAILED(hr))
+    {
+        std::cout<<"IPin.QueryInterface IAMStreamConfig failed"<<std::endl;
+        pStreamConfig = NULL;
+    }
+}
+
+void VideoStreamRender::releaseStreamConfiger()
+{
+    if (pStreamConfig != NULL) pStreamConfig->Release();
+    pStreamConfig = NULL;
+}
+
                              
 IPin* VideoStreamRender::getCapturePin()
 {
@@ -503,7 +676,7 @@ IPin* VideoStreamRender::getCapturePin()
     pEnumPins->Release();
     return nullptr;
 }
-
+/*
 void VideoStreamRender::createD2DRes()
 {
     static const WCHAR msc_fontName[] = L"Verdana";
@@ -564,7 +737,7 @@ void VideoStreamRender::createD2DRes()
 
     if (SUCCEEDED(hr)) bCreateRes = true;
 }
-
+*/
 
 void VideoStreamRender::mixBitmap(HINSTANCE hApp, const wchar_t *bitmapName)
 {
@@ -602,6 +775,8 @@ void VideoStreamRender::mixBitmap(HINSTANCE hApp, const wchar_t *bitmapName)
     HGDIOBJ hGO;
     HBITMAP hBmp;
     HRESULT hr;
+
+    if (!isRun()) return;
         
     hDC = GetDC(renderWin);
     hMemDc = CreateCompatibleDC(hDC);
@@ -634,28 +809,16 @@ void VideoStreamRender::mixBitmap(HINSTANCE hApp, const wchar_t *bitmapName)
 void VideoStreamRender::printFormat(FrameFormat & fmt)
 {
     wchar_t buffer[GUID_STRING_SIZE] = { 0 };
-
-    if (fmt.videoType == MEDIASUBTYPE_YUY2)
-    {
-        std::wcout<<L"video type:YUY2";
-    }
-    else if (fmt.videoType == MEDIASUBTYPE_MJPG)
-    {
-        std::wcout<<L"video type:MJPG";
-    }
-    else
-    {
-        StringFromGUID2(fmt.videoType,buffer,GUID_STRING_SIZE);
-        std::wcout<<L"video type:"<<buffer;
-    }
-
+    std::wstring name = findVideoType(fmt.videoType);
+    std::wcout <<L"video type:"<<name;
+   
     if (fmt.formatType == FORMAT_VideoInfo)
     {
-        std::wcout<<L", video type:FORMAT_VideoInfo";
+        std::wcout<<L", formate type:FORMAT_VideoInfo";
     }
     else if (fmt.formatType == FORMAT_VideoInfo2)
     {
-        std::wcout<<L", video type:FORMAT_VideoInfo2";
+        std::wcout<<L", formate type:FORMAT_VideoInfo2";
     }
     else
     {
@@ -666,5 +829,14 @@ void VideoStreamRender::printFormat(FrameFormat & fmt)
     std::wcout<<L", width:"<<fmt.width;
     std::wcout<<L", height:"<<fmt.height;
     std::wcout<<L", frame rate:"<<10000000/fmt.rate<< std::endl;
+}
+
+void VideoStreamRender::uniqueAppend(std::vector<std::wstring>& list, const std::wstring newItem)
+{
+    for(auto item: list)
+    {
+        if (item == newItem) return;
+    }
+    list.emplace_back(newItem);
 }
 

@@ -11,10 +11,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
 class WinMsgHandle
 {
 public:
+    virtual void open(const std::wstring deviceName) = 0;
     virtual void paint() = 0;
     virtual void snap() = 0;
     virtual void capture(const bool bStart) = 0;
-    virtual bool isPointed(int xPos,int yPos) = 0;
+    //virtual bool isPointed(int xPos,int yPos) = 0;
 };
 
 void RegistWinMsgHandle(WinMsgHandle& msgHandle);

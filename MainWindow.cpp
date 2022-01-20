@@ -10,8 +10,10 @@
 #include "WinMsgHandle.h"
 #include "resource.h"
 
+#define POS_GAP 5
+
 MainWindow::MainWindow(HINSTANCE hInstance, int _videoWidth, int _videoHeight):
-    hApp(hInstance),videoWidth(_videoWidth),videoHeight(_videoHeight),addPos(10)
+    hApp(hInstance),videoWidth(_videoWidth),videoHeight(_videoHeight),addPos(5)
 {
     const wchar_t CLASS_NAME[]  = L"VideoCap";
 
@@ -47,48 +49,19 @@ void MainWindow::addIcon()
                     (LONG_PTR) hIcon); 
 }
 
-void MainWindow::addDeviceCombo()
+void MainWindow::addDeviceCombo(const std::vector<std::wstring>& list, int defaultIndex)
 {
-    int width = 160;
-    hDeviceCombo = CreateWindowEx(
-        0,
-        WC_COMBOBOX,
-        NULL, 
-        CBS_DROPDOWN | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
-        addPos, 5 + videoHeight, width, 200,
-        hMain,
-        (HMENU)IDC_DEVICE_COMBO,
-        hApp,
-        NULL);
-    addPos = addPos + width + 10;
-
-    TCHAR Planets[9][10] =  
-    {
-        TEXT("Mercury"), TEXT("Venus"), TEXT("Terra")
-    };
-       
-    TCHAR A[16]; 
-    int  k = 0; 
-
-    memset(&A,0,sizeof(A));       
-    for (k = 0; k <= 8; k += 1)
-    {
-        wcscpy_s(A, sizeof(A)/sizeof(TCHAR),  (TCHAR*)Planets[k]);
-        SendMessage(hDeviceCombo,(UINT) CB_ADDSTRING,(WPARAM) 0,(LPARAM) A); 
-    }
-      
-    SendMessage(hDeviceCombo, CB_SETCURSEL, (WPARAM)2, (LPARAM)0);
+    hDeviceCombo = addCombo(IDC_DEVICE_COMBO,140,list,defaultIndex);
 }
 
-void MainWindow::addFormatCombo()
+void MainWindow::addFormatCombo(const std::vector<std::wstring>& list, int defaultIndex)
 {
-    /*
-     HWND hWndComboBox = CreateWindow(WC_COMBOBOX, TEXT(""), 
-     CBS_DROPDOWN | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
-     addPos, ypos, nwidth, nheight,
-     hMain, NULL, HINST_THISCOMPONENT,
-     NULL);
-     */
+    hFormatCombo = addCombo(IDC_FORMAT_COMBO,200,list,defaultIndex);
+}
+
+void MainWindow::addResolutionCombo(const std::vector<std::wstring>& list, int defaultIndex)
+{
+    hResolutionCombo = addCombo(IDC_RESOLUTION_COMBO,80,list,defaultIndex);
 }
 
 void MainWindow::addSnapButton()
@@ -104,7 +77,7 @@ void MainWindow::addSnapButton()
         (HMENU)IDC_SNAP_BUTTON,
         hApp,        
         NULL);
-    addPos = addPos + width + 10;
+    addPos = addPos + width + POS_GAP;
     //std::cout<<std::hex<<(unsigned int)hSnapButton<<std::endl;
 }
 
@@ -121,22 +94,30 @@ void MainWindow::addCapButton()
         (HMENU)IDC_CAP_BUTTON,
         hApp,        
         NULL);
-    addPos = addPos + width + 10;
+    addPos = addPos + width + POS_GAP;
     //std::cout<<std::hex<<(unsigned int)hCaptureButton<<std::endl;
 }
 
-/*
-void MainWindow::addTrackBar()
+HWND MainWindow::addCombo(int IDC, int width, const std::vector<std::wstring>& list, int defaultIndex)
 {
-    hTrackBar = CreateWindowEx( 
+    HWND hWnd = CreateWindowEx(
         0,
-        TRACKBAR_CLASS,
-        NULL,
-        WS_CHILD | WS_VISIBLE | TBS_AUTOTICKS | TBS_ENABLESELRANGE,
-        190, 5 + videoHeight, 200, 20,
+        WC_COMBOBOX,
+        NULL, 
+        CBS_DROPDOWN | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+        addPos, 5 + videoHeight, width, 200,
         hMain,
-        (HMENU)IDC_TRACKBAR,
+        (HMENU)IDC,
         hApp,
-        NULL); 
+        NULL);
+    addPos = addPos + width + POS_GAP;
+
+    for(auto item : list)
+    {
+        SendMessage(hWnd,(UINT) CB_ADDSTRING,(WPARAM) 0,(LPARAM) item.c_str()); 
+    }
+      
+    SendMessage(hWnd, CB_SETCURSEL, (WPARAM)defaultIndex, (LPARAM)0);
+    return hWnd;
 }
-*/
+
