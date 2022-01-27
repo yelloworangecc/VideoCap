@@ -24,7 +24,7 @@ class VideoFileWriter
 public:
     static void WriteImageFile(const std::string& filename, void* bitmapFrame);
     
-    VideoFileWriter(const std::string& filename);
+    VideoFileWriter(const std::string& filename,long videoWidth, long videoHeight);
     ~VideoFileWriter();
     
     void writeBitmapFrame(void* bitmapFrame);

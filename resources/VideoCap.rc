@@ -1,8 +1,6 @@
 #include "resource.h"
 
-IDI_ICON_APP        ICON            "kns.ico"
-IDB_INFO_RED        BITMAP          "info_red.bmp"
-IDB_INFO_GRN        BITMAP          "info_grn.bmp"
+IDI_ICON_APP        ICON            "favicon.ico"
 
 IDR_ACCELERATOR_TALBE ACCELERATORS
 {

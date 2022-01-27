@@ -3,6 +3,7 @@
 #endif 
 
 #include <iostream>
+#include <windowsx.h>
 #include "WinMsgHandle.h"
 #include "resource.h"
 
@@ -142,7 +143,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
                             bStarted = true;
                         }
                     }
-                    pMsgHandle->paint();
+                    //pMsgHandle->paint();
                     return 0;
                 case ID_SHORTCUT_SWITCH_DEVICE:
                     std::cout<<"WM_COMMAND:ID_SHORTCUT_SWITCH_DEVICE"<<std::endl;
@@ -159,11 +160,19 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
                 case IDC_DEVICE_COMBO:
                     if(highWP == CBN_SELCHANGE)
                     {
-                        std::cout<<"WM_COMMAND:IDC_DEVICE_COMBO-CBN_SELCHANGE"<<std::endl;
-                        int index = (int)SendMessage(hCtrl, (UINT) CB_GETCURSEL, (WPARAM) 0, (LPARAM) 0);
-                        wchar_t text[256];
-                        SendMessage(hCtrl, (UINT) CB_GETLBTEXT, (WPARAM) index, (LPARAM) text);
-                        //pMsgHandle->open(text);
+                        //get select device
+                        wchar_t devideName[256];
+                        int index = ComboBox_GetCurSel(hCtrl);
+                        ComboBox_GetLBText(hCtrl,index,devideName);
+                        pMsgHandle->reset(devideName);
+                    }
+                    return 0;
+                case IDC_FORMAT_COMBO:
+                case IDC_RESOLUTION_COMBO:
+                    if(highWP == CBN_SELCHANGE)
+                    {
+                        //open device and reset
+                        pMsgHandle->reset(L"");
                     }
                     return 0;
             }

@@ -7,10 +7,21 @@ set_property(GLOBAL PROPERTY OS_FOLDERS ON)
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 
-add_executable(VideoCap WIN32 main.cpp 
-               MainWindow.h MainWindow.cpp
-               VideoStreamRender.h VideoStreamRender.cpp 
-               VideoFileWriter.h VideoFileWriter.cpp
-               WinMsgHandle.h WinMsgHandle.cpp
-	       VideoCap.rc)
+file(GLOB_RECURSE SRC_LIST
+     "${PROJECT_SOURCE_DIR}/src/*.cpp"
+     )
+   
+file(GLOB_RECURSE RC_LIST
+     "${PROJECT_SOURCE_DIR}/resources/*.rc"
+     )
+
+add_executable(VideoCap WIN32
+               ${SRC_LIST}
+               ${RC_LIST}
+                )
+
+target_include_directories(VideoCap PUBLIC
+               "${PROJECT_SOURCE_DIR}/include"
+               )
+	     
 target_link_libraries(VideoCap strmiids.lib d2d1.lib dwrite.lib ${OpenCV_LIBS})

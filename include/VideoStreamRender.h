@@ -9,6 +9,7 @@
 #include <d2d1.h>
 #include <dwrite.h>
 #include "WinMsgHandle.h"
+#include "RenderWin.h"
 
 //video type name and it's GUID
 struct VideoType
@@ -48,12 +49,12 @@ public:
     const std::vector<std::wstring> &listResolution();
     void close();
     void* getImage();
-    void setFormat(const GUID &videoType,
-                      const GUID &formatType,
-                      long width,
-                      long height);
-    void render(HWND hwnd, int heightCtrlBar);
-    void mixBitmap(HINSTANCE hApp, const wchar_t *bitmapName);
+    void set(RenderWin* pRenderWin, const std::wstring& format, const std::wstring& resolution);
+    void render(int heightCtrlBar = DEFAULT_TOOLBAR_HEIGHT);
+    const RECT& getVideoRect(){return videoRect;}
+    long getFrameRate(){return frameRate;}
+    void reset(const std::wstring deviceName);
+    void mixBitmap(const wchar_t *bitmapName);
 
     //windows msg handle functions
     void paint();
@@ -64,7 +65,6 @@ public:
     //status check functions
     bool isOpen(){return bOpen;}
     bool isRun(){return bRun;}
-    bool isCreateRes(){return bCreateRes;}
 
     //static data members
     static bool bCapStarted;
@@ -78,10 +78,13 @@ private:
     //void createD2DRes();
     void printFormat(FrameFormat & fmt);
     void uniqueAppend(std::vector<std::wstring>& list, const std::wstring newItem);
+    void printList(std::vector<std::wstring>& list);
 
-    bool bOpen,bRun,bCreateRes;
-    HWND renderWin;
+    bool bOpen,bRun;
+    //HWND renderWin;
+    RenderWin* pRenderWin;
     RECT videoRect,winRect,targetRect;
+    long frameRate;
     //device open related members
     IBaseFilter *pCaptureFilter;
     ICaptureGraphBuilder2 *pCaptureGraphBuilder;

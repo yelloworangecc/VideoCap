@@ -58,7 +58,7 @@ int WINAPI wWinMain(HINSTANCE hInstance,
     if (resolutionList.empty()) return -1;
 
 
-    MainWindow mainWindow(hInstance,640, 480);
+    MainWindow mainWindow(hInstance);
     mainWindow.addIcon();
     mainWindow.addDeviceCombo(deviceList, deviceIndex);
     mainWindow.addFormatCombo(formatList, formatIndex);
@@ -66,11 +66,10 @@ int WINAPI wWinMain(HINSTANCE hInstance,
     mainWindow.addSnapButton();
     mainWindow.addCapButton();
 
-    //TO DO: implement set interface
-    //vsr.set(deviceIndex,formatIndex,resolutionIndex);
-    vsr.render(mainWindow.getHandle(), 30);
+    vsr.set(&mainWindow,formatList[formatIndex],resolutionList[resolutionIndex]);
+    vsr.render();
     if(!vsr.isRun()) return 0;
-    vsr.mixBitmap(hInstance, L"IDB_INFO_GRN");
+    vsr.mixBitmap(L"IDB_INFO_KNS");
 
     
     HACCEL hAccel = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDR_ACCELERATOR_TALBE));

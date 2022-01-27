@@ -34,13 +34,16 @@ const VideoType VideoStreamRender::allVideoTypes[] = {
 DWORD WINAPI VideoStreamRender::CapProc(LPVOID lpParam)
 {
     VideoStreamRender* pVsr = reinterpret_cast<VideoStreamRender*>(lpParam);
-    VideoFileWriter vfw("test.avi");
+    const RECT videoRect = pVsr->getVideoRect();
+    long frameRate = pVsr->getFrameRate();
+    std::cout<<videoRect.right<<','<<videoRect.bottom<<','<<frameRate<<std::endl;
+    VideoFileWriter vfw("test.avi",videoRect.right,videoRect.bottom);
     while(bCapStarted)
     {
         void* pFrame = pVsr->getImage();
         if (pFrame == nullptr) std::cout<<"GetImage failed"<<std::endl;
         vfw.writeBitmapFrame(pFrame);
-        Sleep(66);//assume fps is 15
+        Sleep(1000/frameRate);
     }
     return 0;
 }
@@ -94,7 +97,7 @@ std::wstring VideoStreamRender::findFormatType(const GUID & guid)
 }
 
 VideoStreamRender::VideoStreamRender():
-    pEnumMoniker(NULL),pStreamConfig(NULL)
+    pEnumMoniker(NULL),pStreamConfig(NULL),bOpen(false),bRun(false)
 {
     CoInitialize(0);
     createDeviceEnumerator();
@@ -133,7 +136,7 @@ const std::vector<std::wstring>& VideoStreamRender::listDevice()
         if (FAILED(hr)) hr = pPropertyBag->Read(L"Description", &var, 0);
         if (SUCCEEDED(hr))
         {
-            std::wcout<<var.bstrVal<<std::endl;
+            //std::wcout<<var.bstrVal<<std::endl;
             uniqueAppend(deviceList,var.bstrVal);
             //deviceList.emplace_back(var.bstrVal);
             VariantClear(&var); 
@@ -141,6 +144,7 @@ const std::vector<std::wstring>& VideoStreamRender::listDevice()
         pPropertyBag->Release();
         pMoniker->Release();
     }
+    printList(deviceList);
     return deviceList;
 }
 
@@ -155,17 +159,18 @@ int VideoStreamRender::getDeviceIndex(std::wstring deviceName)
 
 void VideoStreamRender::open(const std::wstring deviceName)
 {
-    std::cout<<"IN open"<<std::endl;
     IMoniker *pMoniker;
     IPropertyBag *pPropertyBag;
     HRESULT hr;
     VARIANT var;
+
+    std::cout<<"IN open"<<std::endl;
+    
+    //if opened, close it first
+    if (isOpen()) close();
     
     bool bFindMoniker = false;
     bOpen = false;
-
-    //if opened, close it first
-    if (isOpen()) close();
     
     //enum video devices again
     if (pEnumMoniker == NULL) createDeviceEnumerator();
@@ -187,6 +192,8 @@ void VideoStreamRender::open(const std::wstring deviceName)
         if (FAILED(hr)) hr = pPropertyBag->Read(L"Description", &var, 0);
         if (SUCCEEDED(hr))
         {
+            
+            std::wcout << deviceName <<L"," <<var.bstrVal<< std::endl;
             if (deviceName.compare(var.bstrVal) == 0)
             {
                 pPropertyBag->Release();
@@ -266,9 +273,9 @@ const std::vector<std::wstring>& VideoStreamRender::listFormat()
         std::wstring videoType = findVideoType(pMediaType->subtype);
         std::wstring headerType = findFormatType(pMediaType->formattype);
         uniqueAppend(formatList, videoType+L" "+headerType);
-        std::wcout<<videoType<<L" "<<headerType<<std::endl;
+        //std::wcout<<videoType<<L" "<<headerType<<std::endl;
     }
-    
+    printList(formatList);
     return formatList;
 }
 
@@ -303,7 +310,7 @@ const std::vector<std::wstring>& VideoStreamRender::listResolution()
             std::wstringstream sstream;
             sstream<<pvideoInfo->bmiHeader.biWidth<<L" "<<pvideoInfo->bmiHeader.biHeight;
             uniqueAppend(resolutionList, sstream.str());
-            std::wcout<<sstream.str()<<std::endl;
+            //std::wcout<<sstream.str()<<std::endl;
         }
         else if (FORMAT_VideoInfo2 == pMediaType->formattype)
         {
@@ -311,18 +318,21 @@ const std::vector<std::wstring>& VideoStreamRender::listResolution()
             std::wstringstream sstream;
             sstream<<pvideoInfo->bmiHeader.biWidth<<L" "<<pvideoInfo->bmiHeader.biHeight;
             uniqueAppend(resolutionList, sstream.str());
-            std::wcout<<sstream.str()<<std::endl;
+            //std::wcout<<sstream.str()<<std::endl;
         }
     }
-    
+    printList(resolutionList);
     return resolutionList;
 }
 
 void VideoStreamRender::close()
 {
+    std::cout<<"IN close"<<std::endl;
+    
     //stage 1, stop and release render related members
     if (isRun())
     {
+        bRun = false;
         //stop video stream
         pMediaControl->Stop();
         //release render related members
@@ -330,11 +340,14 @@ void VideoStreamRender::close()
         pVMRControl->Release();
         pMediaControl = NULL;
         pVMRControl = NULL;
+        std::cout<<"stage 1"<<std::endl;
     }
     
     //stage 2, release all filter and device related members
     if (isOpen())
     {
+        bOpen = false;
+        releaseStreamConfiger();
         //release filters
         IEnumFilters *pEnum = NULL;
         HRESULT hr = pGraphBuilder->EnumFilters(&pEnum);
@@ -356,13 +369,9 @@ void VideoStreamRender::close()
         //release device related members
         pGraphBuilder->Release();
         pCaptureGraphBuilder->Release();
+        std::cout<<"stage 2"<<std::endl;
     }
     
-    releaseStreamConfiger();
-    releaseDeviceEnumerator();
-    
-    bOpen = false;
-    bRun = false;
 }
 
 void* VideoStreamRender::getImage()
@@ -381,32 +390,54 @@ void* VideoStreamRender::getImage()
     return reinterpret_cast<void*>(lpCurrImage);
 }
 
-void VideoStreamRender::setFormat(const GUID &videoType,
-                                      const GUID &formatType,
-                                      long width,
-                                      long height)
+/*
+ * set the render window and stream format
+ */
+void VideoStreamRender::set(
+    RenderWin* pRenderWin,
+    const std::wstring& format,
+    const std::wstring& resolution)
 {
-    IPin *pCapPin;
-    IAMStreamConfig *pStreamConfig;
     HRESULT hr;
     int piCount, piSize;
     AM_MEDIA_TYPE *pMediaType;
     VIDEO_STREAM_CONFIG_CAPS scc;
+    int imageHeight;
+    double radio;
+
+    std::cout<<"IN set"<<std::endl;
     bool bFind = false;
-
     if (!isOpen()) return;
-    
-    //get capture pin
-    pCapPin = getCapturePin();
-    if (pCapPin == nullptr)
-    {
-        std::cout<<"find Capture pin failed"<<std::endl;
-        return;
-    }
 
-    //query stream config interface
-    hr = pCapPin->QueryInterface(IID_IAMStreamConfig, (void**)&pStreamConfig);
-    CHECK_HR_FAILED(std::cout<<"IPin.QueryInterface IAMStreamConfig failed"<<std::endl)
+    this->pRenderWin = pRenderWin;
+    std::wstringstream formatStream(format);
+    std::wstringstream resolutionStream(resolution);
+    std::wstring videoType;
+    std::wstring formatType;
+    int width;
+    int height;
+    formatStream>>videoType>>formatType;
+    resolutionStream>>width>>height;
+
+    if (double(width)/DEFAULT_IMAGE_WIDTH >= 1)
+    {
+        //use the image size
+        pRenderWin->updateWindowSize(width+WIDTH_MARGIN,
+            height+DEFAULT_TOOLBAR_HEIGHT+HEIGHT_MARGIN);
+        pRenderWin->updateCtrlPos(height);
+   }
+    else
+    {
+        //fit the window size
+        radio = double(DEFAULT_IMAGE_WIDTH)/width;
+        imageHeight = (int)(height*radio);
+        pRenderWin->updateWindowSize(DEFAULT_IMAGE_WIDTH+WIDTH_MARGIN,
+            imageHeight+DEFAULT_TOOLBAR_HEIGHT+HEIGHT_MARGIN);
+        pRenderWin->updateCtrlPos(imageHeight);
+    }
+    
+    if (pStreamConfig == NULL) createStreamConfiger();
+    if (pStreamConfig == NULL) return;
 
     //loop all supported media type
     hr = pStreamConfig->GetNumberOfCapabilities(&piCount, &piSize);
@@ -414,26 +445,28 @@ void VideoStreamRender::setFormat(const GUID &videoType,
     for (int i = 0; i < piCount; i++)
     {
         pStreamConfig->GetStreamCaps(i, &pMediaType, reinterpret_cast<BYTE *>(&scc));
-        if (FORMAT_VideoInfo == formatType && FORMAT_VideoInfo == pMediaType->formattype)
+        if (FORMAT_VideoInfo == findFormatType(formatType) && FORMAT_VideoInfo == pMediaType->formattype)
         {
 
             VIDEOINFOHEADER *pvideoInfo = (VIDEOINFOHEADER *)pMediaType->pbFormat;
-            if (videoType == pMediaType->subtype && 
+            if (findVideoType(videoType) == pMediaType->subtype && 
                 width == pvideoInfo->bmiHeader.biWidth && 
                 height == pvideoInfo->bmiHeader.biHeight)
             {
-            	bFind = true;
+                frameRate = 10000000/pvideoInfo->AvgTimePerFrame;
+                bFind = true;
                 break;
             }
         }
-		else if (FORMAT_VideoInfo2 == formatType && FORMAT_VideoInfo2 == pMediaType->formattype)
+        else if (FORMAT_VideoInfo2 == findFormatType(formatType) && FORMAT_VideoInfo2 == pMediaType->formattype)
         {
             VIDEOINFOHEADER2 *pvideoInfo = (VIDEOINFOHEADER2 *)pMediaType->pbFormat;
-            if (videoType == pMediaType->subtype && 
+            if (findVideoType(videoType) == pMediaType->subtype && 
                 width == pvideoInfo->bmiHeader.biWidth && 
                 height == pvideoInfo->bmiHeader.biHeight)
             {
-            	bFind = true;
+                frameRate = 10000000/pvideoInfo->AvgTimePerFrame;
+                bFind = true;
                 break;
             }
         }
@@ -441,14 +474,17 @@ void VideoStreamRender::setFormat(const GUID &videoType,
     
     // set format
     if (bFind) pStreamConfig->SetFormat(pMediaType);
-    pStreamConfig->Release();
 }
 
-void VideoStreamRender::render(HWND hwnd, int heightCtrlBar)
+/*
+ * render stream
+ */
+void VideoStreamRender::render(int heightCtrlBar)
 {
     long lWidth, lHeight;
     HRESULT hr;
 
+    std::cout<<"IN render"<<std::endl;
     bRun = false;
     if (!isOpen()) return;
 
@@ -475,17 +511,8 @@ void VideoStreamRender::render(HWND hwnd, int heightCtrlBar)
     hr = pVMRFilter->QueryInterface(IID_IVMRWindowlessControl9, (void**)&pVMRControl);
     CHECK_HR_FAILED(std::cout<<"IBaseFilter.QueryInterface IVMRWindowlessControl9 failed"<<std::endl)
 
-    hr = pVMRControl->SetVideoClippingWindow(hwnd);
+    hr = pVMRControl->SetVideoClippingWindow(pRenderWin->getHandle());
     CHECK_HR_FAILED(std::cout<<"IVMRWindowlessControl9.SetVideoClippingWindow failed"<<std::endl)
-
-    hr = pVMRControl->GetNativeVideoSize(&lWidth, &lHeight, NULL, NULL);
-    CHECK_HR_FAILED(std::cout<<"IVMRWindowlessControl9.SetVideoClippingWindow failed"<<std::endl)
-
-    SetRect(&videoRect, 0, 0, lWidth, lHeight); 
-    GetClientRect(hwnd, &winRect);
-    SetRect(&targetRect, 0, 0, winRect.right, winRect.bottom - heightCtrlBar); 
-    hr = pVMRControl->SetVideoPosition(&videoRect, &targetRect);
-    CHECK_HR_FAILED(std::cout<<"IVMRWindowlessControl9.SetVideoPosition failed"<<std::endl)
 
     //add VMRFilter into graph
     hr = pCaptureGraphBuilder->RenderStream(&PIN_CATEGORY_CAPTURE,
@@ -495,45 +522,90 @@ void VideoStreamRender::render(HWND hwnd, int heightCtrlBar)
                                             pVMRFilter);
     CHECK_HR_FAILED(std::cout<<"CaptureGraphBuilder.RenderStream failed"<<std::endl)
 
+    
+    hr = pVMRControl->GetNativeVideoSize(&lWidth, &lHeight, NULL, NULL);
+    CHECK_HR_FAILED(std::cout<<"IVMRWindowlessControl9.GetNativeVideoSize failed"<<std::endl)
+
+    SetRect(&videoRect, 0, 0, lWidth, lHeight); 
+    GetClientRect(pRenderWin->getHandle(), &winRect);
+    SetRect(&targetRect, 0, 0, winRect.right, winRect.bottom - heightCtrlBar); 
+    hr = pVMRControl->SetVideoPosition(&videoRect, &targetRect);
+    CHECK_HR_FAILED(std::cout<<"IVMRWindowlessControl9.SetVideoPosition failed"<<std::endl)
+
     //get media control and run
     hr = pGraphBuilder->QueryInterface(IID_IMediaControl, (LPVOID*)&pMediaControl);
     CHECK_HR_FAILED(std::cout<<"GraphBuilder.QueryInterface IMediaControl failed"<<std::endl)
     hr = pMediaControl->Run();
     CHECK_HR_FAILED(std::cout<<"IMediaControl.Run failed"<<std::endl)
 
-    renderWin = hwnd;
+    this->pRenderWin = pRenderWin;
     bRun = true;
 
     //createRenderTarget(renderWin);
+}
+
+/*
+ * set the render parameter and start render
+ */
+void VideoStreamRender::reset(const std::wstring deviceName)
+{
+    std::cout<<"IN reset"<<std::endl;
+    std::vector<std::wstring> settings = pRenderWin->getUserSettings();
+
+    if (deviceName.empty())
+    {
+        //device not changed
+        open(settings[0]);
+        if (!isOpen()) return;
+    }
+    else
+    {
+        //device changed
+        open(deviceName);
+        if (!isOpen()) return;
+        listFormat();
+        listResolution();
+        pRenderWin->updateUserSettings(formatList, resolutionList);
+        settings = pRenderWin->getUserSettings();
+    }
+    
+    //set and render
+    set(pRenderWin,settings[1],settings[2]);
+    render();
+    mixBitmap(L"IDI_ICON_APP");
 }
 
 void VideoStreamRender::paint()
 {
     PAINTSTRUCT ps; 
     HDC hdc;
-    hdc = BeginPaint(renderWin, &ps);
+    hdc = BeginPaint(pRenderWin->getHandle(), &ps);
     
-    if (isRun()) 
+        FillRect(hdc, &winRect, (HBRUSH)(COLOR_WINDOW));
+    if (isRun() && pVMRControl != NULL) 
     {   
+        std::cout<<winRect.left <<' '
+                 <<winRect.top  <<' '
+                 <<winRect.right  <<' '
+                 <<winRect.bottom  <<' ' <<std::endl;
+        std::cout<<targetRect.left <<' '
+                 <<targetRect.top  <<' '
+                 <<targetRect.right  <<' '
+                 <<targetRect.bottom  <<' ' <<std::endl;
         HRGN rgnClient = CreateRectRgnIndirect(&winRect); 
         HRGN rgnVideo  = CreateRectRgnIndirect(&targetRect);  
         CombineRgn(rgnClient, rgnClient, rgnVideo, RGN_DIFF);  
 
-        HBRUSH hbr = GetSysColorBrush(COLOR_BTNFACE); 
+        HBRUSH hbr = GetSysColorBrush(COLOR_WINDOW); 
         FillRgn(hdc, rgnClient, hbr); 
 
         DeleteObject(hbr); 
         DeleteObject(rgnClient); 
         DeleteObject(rgnVideo); 
 
-        pVMRControl->RepaintVideo(renderWin, hdc);
+        pVMRControl->RepaintVideo(pRenderWin->getHandle(), hdc);
     } 
-    else
-    { 
-        FillRect(hdc, &targetRect, (HBRUSH)(COLOR_WINDOW));
-    } 
-    
-    EndPaint(renderWin, &ps);
+    EndPaint(pRenderWin->getHandle(), &ps);
 
 }
 
@@ -612,7 +684,7 @@ void VideoStreamRender::releaseDeviceEnumerator()
 
 void VideoStreamRender::createStreamConfiger()
 {
-    std::cout<<"IN createDeviceEnumerator"<<std::endl;
+    std::cout<<"IN createStreamConfiger"<<std::endl;
     IPin *pCapPin;
     HRESULT hr;
 
@@ -739,7 +811,7 @@ void VideoStreamRender::createD2DRes()
 }
 */
 
-void VideoStreamRender::mixBitmap(HINSTANCE hApp, const wchar_t *bitmapName)
+void VideoStreamRender::mixBitmap(const wchar_t *bitmapName)
 {
     /*
     IDirect3D9* pDirect3D9;
@@ -778,9 +850,9 @@ void VideoStreamRender::mixBitmap(HINSTANCE hApp, const wchar_t *bitmapName)
 
     if (!isRun()) return;
         
-    hDC = GetDC(renderWin);
+    hDC = GetDC(pRenderWin->getHandle());
     hMemDc = CreateCompatibleDC(hDC);
-    hBmp = LoadBitmap(hApp,bitmapName);
+    hBmp = LoadBitmap(pRenderWin->getApp(),bitmapName);
     hGO = SelectObject(hMemDc,hBmp);
     
     //RECT rSrc = ;
@@ -791,10 +863,10 @@ void VideoStreamRender::mixBitmap(HINSTANCE hApp, const wchar_t *bitmapName)
     infoBmp.pDDS = 0;
     infoBmp.rSrc = { 0,0,32,32 };
     infoBmp.rDest.left     = 0.0f;
-    infoBmp.rDest.top      = 1.0f - ((float)32 / (float)480);
-    infoBmp.rDest.right    = ((float)32 / (float) 640);
+    infoBmp.rDest.top      = 1.0f - ((float)32 / (float)winRect.bottom);
+    infoBmp.rDest.right    = ((float)32 / (float)winRect.right);
     infoBmp.rDest.bottom   = 1.0f;
-    infoBmp.fAlpha = 0.5;
+    infoBmp.fAlpha = 0.25;
     infoBmp.clrSrcKey = 0;
     infoBmp.dwFilterMode = 0;
 
@@ -840,3 +912,10 @@ void VideoStreamRender::uniqueAppend(std::vector<std::wstring>& list, const std:
     list.emplace_back(newItem);
 }
 
+void VideoStreamRender::printList(std::vector<std::wstring>& list)
+{
+    for(auto item: list)
+    {
+        std::wcout<<item<<std::endl;
+    }
+}

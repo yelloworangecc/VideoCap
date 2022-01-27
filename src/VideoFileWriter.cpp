@@ -12,13 +12,15 @@ void VideoFileWriter::WriteImageFile(const std::string& filename, void* bitmapFr
                       (void*)(bitmapHeader+1),
                       cv::Mat::AUTO_STEP
                       );
+        cv::flip(image,image,0);
         cv::imwrite(filename, image);
+        cv::imshow("SNAP",image);
     }
 }
 
-VideoFileWriter::VideoFileWriter(const std::string &filename)
+VideoFileWriter::VideoFileWriter(const std::string &filename,long videoWidth, long videoHeight)
 {
-    fw.open(filename,cv::VideoWriter::fourcc('M','J','P','G'),15.0,cv::Size(640,480));
+    fw.open(filename,cv::VideoWriter::fourcc('M','J','P','G'),15.0,cv::Size(videoWidth,videoHeight));
 }
 
 VideoFileWriter::~VideoFileWriter()
@@ -37,6 +39,7 @@ void VideoFileWriter::writeBitmapFrame(void *bitmapFrame)
                       (void*)(bitmapHeader+1),
                       cv::Mat::AUTO_STEP
                       );
+        cv::flip(image,image,0);
         cv::cvtColor(image, image, cv::COLOR_RGBA2RGB);
         fw<<image;
     }
