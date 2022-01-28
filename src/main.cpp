@@ -6,84 +6,130 @@
 #include <cstdio>
 #include <vector>
 #include <windows.h>
-#include "MainWindow.h"
-#include "VideoStreamRender.h"
-#include "WinMsgHandle.h"
 #include "resource.h"
+#include "VideoCapController.h"
 
+/**W I N D O W   P R O C***************************************************
+ * Create: BY Huang Cheng(chhuang@kns.com) ON 2022211
+ * Description: win32 massage loop
+ * Parameters: 
+   - 
+ * Return: 
+----------------------------C H A N G E   L O G----------------------------
+ * 
+**************************************************************************/
+LRESULT CALLBACK WindowProc(HWND hwnd,
+    UINT uMsg,
+    WPARAM wParam,
+    LPARAM lParam)
+{
+    VideoCapController& controller = VideoCapController::getInstance();
+    int xPos, yPos;
+    switch (uMsg)
+    {
+    case WM_MOUSEMOVE:
+        xPos = LOWORD(lParam);
+        yPos = HIWORD(lParam);
+        break;
+    case WM_LBUTTONDOWN:
+        std::cout << "WM_LBUTTONDOWN" << std::endl;
+        xPos = LOWORD(lParam);
+        yPos = HIWORD(lParam);
+        std::cout << xPos << ',' << yPos << std::endl;
+        break;
+    //case WM_HSCROLL:
+        //std::cout << "WM_HSCROLL" << std::endl;
+        //return 0;
+    case WM_GRAPHNOTIFY:
+        std::cout << "WM_GRAPHNOTIFY" << std::endl;
+        controller.onGraphEvent();
+        return 0;
+    case WM_DESTROY:
+        std::cout << "WM_DESTROY" << std::endl;
+        controller.uninitialize();
+        PostQuitMessage(0);
+        return 0;
+    case WM_PAINT:
+        std::cout << "WM_PAINT" << std::endl;
+        controller.onPaint();
+        return 0;
+    case WM_SIZE:
+        std::cout << "WM_SIZE" << std::endl;
+        controller.onSize();
+        return 0;
+    case WM_DISPLAYCHANGE:
+        std::cout << "WM_DISPLAYCHANGE" << std::endl;
+        return 0;
+    case WM_COMMAND:
+        int lowWP = LOWORD(wParam);
+        int highWP = HIWORD(wParam);
+        HWND hCtrl = reinterpret_cast<HWND>(lParam);
+        //std::cout<<lowWP<<','<<highWP<<','<<std::hex<<(unsigned int)hCtrl<<std::endl;
+        switch (lowWP)
+        {
+            case IDC_SNAP_BUTTON:
+                std::cout << "WM_COMMAND:IDC_SNAP_BUTTON" << std::endl;
+                controller.onSnap();
+                return 0;
+            case IDC_CAP_BUTTON:
+                std::cout << "WM_COMMAND:IDC_CAP_BUTTON" << std::endl;
+                controller.onCapture();
+                return 0;
+            case IDC_DEVICE_COMBO:
+                if (highWP == CBN_SELCHANGE)
+                {
+                    std::cout << "WM_COMMAND:IDC_DEVICE_COMBO" << std::endl;
+                    controller.onDeviceChanged();
+                }
+                return 0;
+            case IDC_FORMAT_COMBO:
+                if (highWP == CBN_SELCHANGE)
+                {
+                    std::cout << "WM_COMMAND:IDC_FORMAT_COMBO" << std::endl;
+                    controller.onFormatChanged();
+                }
+                return 0;
+            case IDC_RESOLUTION_COMBO:
+                if (highWP == CBN_SELCHANGE)
+                {
+                    std::cout << "WM_COMMAND:IDC_RESOLUTION_COMBO" << std::endl;
+                    controller.onResolutionChanged();
+                }
+                return 0;
+        }
+    }
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+/**W   W I N   M A I N*****************************************************
+ * Create: BY Huang Cheng(chhuang@kns.com) ON 2022211
+ * Description: win32 entry point (unicode)
+ * Parameters: 
+   - 
+ * Return: 
+----------------------------C H A N G E   L O G----------------------------
+ * 
+**************************************************************************/
 int WINAPI wWinMain(HINSTANCE hInstance,
                        HINSTANCE hPrevInstance,
                        PWSTR pCmdLine,
                        int nCmdShow)
 {
-    wchar_t ** argv;
-    int argc;
-    VideoStreamRender vsr;
     wchar_t* pDeviceName = NULL;
     int deviceIndex = 0;
     int formatIndex = 0;
     int resolutionIndex = 0;
-    
-    //parse command line
-    argv = CommandLineToArgvW(pCmdLine,&argc);
-    if (0 == wcscmp(argv[0], L"list"))
-    {
-        AllocConsole();
-        freopen("conout$","w",stdout);
-        vsr.listDevice();
-        system("pause");
-        FreeConsole();
-        return 0;
-    }
-    //user specified device
-    if (argc == 2 && 0 == wcscmp(argv[0], L"open"))
-    {
-        pDeviceName = argv[1];
-    }
-    
-    RegistWinMsgHandle(vsr);
-    
-    std::vector<std::wstring> deviceList = vsr.listDevice();
-    if (deviceList.empty()) return -1;
 
-    //is user specified device
-    if (pDeviceName != NULL) deviceIndex = vsr.getDeviceIndex(pDeviceName);
-    vsr.open(pDeviceName != NULL  ? pDeviceName:deviceList[0]);
-    if(!vsr.isOpen()) return -1;
-    
-    std::vector<std::wstring> formatList = vsr.listFormat();
-    if (formatList.empty()) return -1;
-    
-    std::vector<std::wstring> resolutionList = vsr.listResolution();
-    if (resolutionList.empty()) return -1;
-
-
-    MainWindow mainWindow(hInstance);
-    mainWindow.addIcon();
-    mainWindow.addDeviceCombo(deviceList, deviceIndex);
-    mainWindow.addFormatCombo(formatList, formatIndex);
-    mainWindow.addResolutionCombo(resolutionList,resolutionIndex);
-    mainWindow.addSnapButton();
-    mainWindow.addCapButton();
-
-    vsr.set(&mainWindow,formatList[formatIndex],resolutionList[resolutionIndex]);
-    vsr.render();
-    if(!vsr.isRun()) return 0;
-    vsr.mixBitmap(L"IDB_INFO_KNS");
-
-    
-    HACCEL hAccel = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDR_ACCELERATOR_TALBE));
-
-    ShowWindow(mainWindow.getHandle(), SW_SHOW);
+    VideoCapController& controller = VideoCapController::getInstance();
+    controller.initialize(hInstance);
+    controller.showWindow();
+    controller.setupVideoDevice();
 
     MSG msg = { 0 };
     while (GetMessage(&msg, NULL, 0, 0))
     {
-        if (!TranslateAccelerator(mainWindow.getHandle(), hAccel, &msg))
-        {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
-        }
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
     }
 
     return 0;

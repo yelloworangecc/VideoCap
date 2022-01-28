@@ -1,0 +1,10 @@
+{
+  "DeviceName": "USB Video Device",
+  "Format": "YUY2",
+  "StillHeight": 1200,
+  "StillSavePath": ".",
+  "StillWidth": 1600,
+  "VideoHeight": 480,
+  "VideoSavePath": ".",
+  "VideoWidth": 640
+}

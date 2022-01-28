@@ -23,10 +23,10 @@ class VideoFileWriter
 {
 public:
     static void WriteImageFile(const std::string& filename, void* bitmapFrame);
-    
-    VideoFileWriter(const std::string& filename,long videoWidth, long videoHeight);
+    static void WriteImageFile(const std::string& filename,int width, int height, void* bitmapData);
+    VideoFileWriter(const std::string& filename, double frameRate, long videoWidth, long videoHeight);
     ~VideoFileWriter();
-    
+    bool isOpened();
     void writeBitmapFrame(void* bitmapFrame);
 
 private:
