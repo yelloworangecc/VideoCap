@@ -34,3 +34,5 @@
 # User
 build/
 *.aps
+*.ico
+*.bmp
