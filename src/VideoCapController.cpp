@@ -57,13 +57,14 @@ void VideoCapController::initialize(HINSTANCE hApp)
     window.create(hApp);
     if (!settings.exist(KEY_SAVE_PATH)) settings.set(KEY_SAVE_PATH,"");
     capture.initialize(settings.get<std::string>(KEY_SAVE_PATH));
-    hMemDc = loadLogo(L"ID_BMP_APP");
+    loadLogo(L"ID_BMP_APP");
 }
 
 void VideoCapController::uninitialize()
 {
+    window.destory();
     capture.uninitialize();
-    DeleteDC(hMemDc);
+    freeLogo();
 }
 
 
@@ -94,27 +95,6 @@ RECT VideoCapController::getRectFromResolution(const std::wstring& wResolution)
     }
     return rect;
 }
-/*
-void VideoCapController::setupVideoAreaSize(const std::wstring& wResolution)
-{
-    int width, height;
-    double ratio;
-    wchar_t delimiter;
-    std::wstringstream ss;
-
-    ss << wResolution;
-    ss >> width >> delimiter >> height;
-    if (width >= DEFAULT_IMAGE_WIDTH)
-    {
-        window.setVideoSize(width, height);
-    }
-    else
-    {
-        ratio = double(DEFAULT_IMAGE_WIDTH) / width;
-        height = height * ratio;
-        window.setVideoSize(DEFAULT_IMAGE_WIDTH, height);
-    }
-}*/
 
 void VideoCapController::setupVideoDevice()
 {
@@ -128,23 +108,25 @@ void VideoCapController::setupVideoDevice()
     window.setVideoSize(newRect.right, newRect.bottom);
 
     capture.clean();
-    capture.setup(wName.c_str(),wFormat.c_str(),wResolution.c_str(),window.getHandle(), newRect, hMemDc);
+    capture.setup(wName.c_str(),wFormat.c_str(),wResolution.c_str(),window.getHandle(), newRect, hDcLogo);
     capture.start();
 }
 
-HDC VideoCapController::loadLogo(const wchar_t* pResourceName)
+void VideoCapController::loadLogo(const wchar_t* pResourceName)
 {
-    std::cout<<"IN loadLogo"<<std::endl;
-    HBITMAP hBmp;
-    HDC hDC,hMemDc;
+    HDC hDC;
     HGDIOBJ hGO;
 
-    hBmp = LoadBitmap(hApp,pResourceName);
+    hBmpLogo = LoadBitmap(hApp,pResourceName);
     hDC = GetDC(window.getHandle());
-    hMemDc = CreateCompatibleDC(hDC);
-    hGO = SelectObject(hMemDc,hBmp);
-	
-    return hMemDc;
+    hDcLogo = CreateCompatibleDC(hDC);
+    hGO = SelectObject(hDcLogo, hBmpLogo);
+}
+
+void VideoCapController::freeLogo()
+{
+    DeleteObject(hBmpLogo);
+    DeleteDC(hDcLogo);
 }
 
 void VideoCapController::updateDeviceCombo()
@@ -152,6 +134,7 @@ void VideoCapController::updateDeviceCombo()
     int deviceIndex = -1;
     
     const std::vector<std::wstring>& deviceNameList = capture.getDeviceNameList();
+    if (deviceNameList.empty()) return;
     if (settings.exist(KEY_DEVICE_NAME))
     {
         std::wstring wDeviceName = Ansi2Unicode(settings.get<std::string>(KEY_DEVICE_NAME));
@@ -174,6 +157,7 @@ void VideoCapController::updateFormatCombo(const wchar_t* pDeviceName)
 {
     int formatIndex = -1;
     const std::vector<std::wstring>& formatNameList = capture.getFormatNameList(pDeviceName);
+    if (formatNameList.empty()) return;
     if (settings.exist(KEY_FORMAT))
     {
         std::wstring wFormat = Ansi2Unicode(settings.get<std::string>(KEY_FORMAT));
@@ -196,8 +180,8 @@ void VideoCapController::updateResolutionCombo(const wchar_t* pDeviceName, const
 {
     int resolutionindex = -1;
     const std::vector<std::wstring>& resolutonList = capture.getResolutionList(pDeviceName,pFormat);
-    
-    std::wcout<<pDeviceName<< L'.'<<pFormat<<L'.'<< resolutonList.size() <<std::endl;
+    if (resolutonList.empty()) return;
+    //std::wcout<<pDeviceName<< L'.'<<pFormat<<L'.'<< resolutonList.size() <<std::endl;
     if (settings.exist(KEY_RESOLUTION))
     {
         std::wstring wResolution = Ansi2Unicode(settings.get<std::string>(KEY_RESOLUTION));
@@ -225,7 +209,7 @@ void VideoCapController::onPaint()
     hdc = BeginPaint(hWin, &ps);
     FillRect(hdc, &client, (HBRUSH)(COLOR_BTNFACE)); 
     RECT rect = window.getTargetVideoRect();
-    capture.setRenderPosition(rect);
+    capture.setVmrRenderPosition(rect);
     capture.paint(hWin, hdc);
     EndPaint(hWin, &ps); 
 }
@@ -233,7 +217,7 @@ void VideoCapController::onPaint()
 void VideoCapController::onSize()
 {
     RECT rect = window.getTargetVideoRect();
-    capture.setRenderPosition(rect);
+    capture.setVmrRenderPosition(rect);
     RedrawWindow(window.getHandle(), 0, 0, RDW_ERASE | RDW_INVALIDATE);
 }
 
@@ -247,13 +231,13 @@ void VideoCapController::onCapture()
     static bool startCap = false;
     if (!startCap)
     {
-        window.setCaptureButtonText(L"STOP  Cap");
+        window.setCaptureButton(0);
         capture.startCapture();
         startCap = true;
     }
     else 
     {
-        window.setCaptureButtonText(L"START Cap");
+        window.setCaptureButton(1);
         capture.stopCapture();
         startCap = false;
     }

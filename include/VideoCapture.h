@@ -40,7 +40,7 @@ public:
 
     void initialize(const std::string& savePath);
     void uninitialize();
-    void enumDevices();
+    int enumDevices();
     void enumFormats(IAMStreamConfig* pAMStreamConfig, std::vector<Format>& formatList);
     void createRender();
     void releaseRender();
@@ -56,10 +56,9 @@ public:
         const wchar_t* pResolution);
     void setDeviceFilter();
     void addVmr();
-    //void setVmr();
     void renderVmr(HWND hWin);
     RECT getCurrentVideoRect();
-    void setRenderPosition(RECT& dstRect);
+    void setVmrRenderPosition(RECT& dstRect);
     void notifyWindow(HWND hWin);
     void setup(
         const wchar_t* pDeviceName,
@@ -71,9 +70,7 @@ public:
     //void renderCapture(HWND hWin, RECT& dstRec);
     void overlapLogo(HDC hMemDc, long width, long height);
     void addGrabber();
-    //void setGrabber();
     void renderGrabber();
-    void renderStill();
     void start();
     void pause();
     void stop();
@@ -100,7 +97,6 @@ public:
     bool isCaptureStarted(){return bCaptureStarted;}
     const std::string getSavePath(){return savePath;}
     IMediaEventEx* getMediaEvent(){return pIMediaEventEx;}
-    //IVMRWindowlessControl9* getVmrControl(){return pVmr->pVMRWindowlessControl9;}
     bool isVrmRendered() { return bVrmRendered; }
     
 private:
@@ -129,14 +125,6 @@ private:
 
     VmrRender* pVmr;
     GrabberNullRender* pGrab;
-    
-
-    //std::wstring currentDeviceName;
-    //std::wstring currentFormatName;
-    //std::wstring currentResolution;
-    //std::vector<InputDevice> devices;
-    //std::vector<DevicePin> pins;
-    //std::vector<PinFormat> formats;
 };
 
 #endif

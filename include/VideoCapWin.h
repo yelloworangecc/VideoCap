@@ -7,11 +7,12 @@
 #define WINDOW_WIDTH_MARGIN 16
 #define WINDOW_HEIGHT_MARGIN 39
 
-#define DEFAULT_IMAGE_WIDTH 530
-#define TOOLBAR_HEIGHT 30
+#define DEFAULT_IMAGE_WIDTH 570
+#define TOOLBAR_HEIGHT 50
 #define CTRL_GRAP 5
-#define BUTTON_HEIGHT 20
-#define BUTTON_WIDTH 80
+#define BUTTON_HEIGHT 40
+#define BUTTON_WIDTH 100
+#define STATIC_HEIGHT 20
 #define COMBO_HEIGHT 200
 #define DEVICE_COMBO_WIDTH 160
 #define FORMAT_COMBO_WIDTH 80
@@ -34,10 +35,11 @@ public:
     ~VideoCapWin(){}
 
     void create(HINSTANCE hApp);
+    void destory();
     HWND getHandle(){return hWin;}
     void show();
     void setVideoSize(int width, int height);
-    void setCaptureButtonText(const wchar_t* text);
+    void setCaptureButton(int status);
     const RECT& getTargetVideoRect();
 
     int getDeviceComboIndex();
@@ -54,11 +56,17 @@ public:
 private:
     HINSTANCE hApp;
     HWND hWin;
+    HWND hDeviceStatic;
+    HWND hFormatStatic;
+    HWND hResolutionStatic;
     HWND hDeviceCombo;
     HWND hFormatCombo;
     HWND hResolutionCombo;
     HWND hSnapButton;
     HWND hCaptureButton;
+    HBITMAP hBmpImage;
+    HBITMAP hBmpVideo;
+    HBITMAP hBmpVideoOff;
     RECT clientRect;
     RECT videoRect;
     wchar_t deviceTextBuffer[COMBO_TEXT_BUFFER_LEN];

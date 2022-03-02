@@ -35,10 +35,9 @@ public:
     void enumVideoDevices();
     void printVideoDevices();
     RECT getRectFromResolution(const std::wstring& wResolution);
-    //void setupVideoAreaSize(const std::wstring& wResolution);
     void setupVideoDevice();
-    HDC loadLogo(const wchar_t* pResourceName);
-    //void freeVideoDevices();
+    void loadLogo(const wchar_t* pResourceName);
+    void freeLogo();
 
     void updateDeviceCombo();
     void updateFormatCombo(const wchar_t* pDeviceName);
@@ -65,7 +64,8 @@ private:
     HINSTANCE hApp;
     VideoCapWin window;
     VideoCapture capture;
-    HDC hMemDc;
+    HBITMAP hBmpLogo;
+    HDC hDcLogo;
 };
 
 #endif

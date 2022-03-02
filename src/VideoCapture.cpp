@@ -620,9 +620,11 @@ VideoCapture::~VideoCapture()
 void VideoCapture::initialize(const std::string& savePath)
 {
     this->savePath = savePath;
-    enumDevices();
-    createGraph();
-    createRender();
+    if (enumDevices())
+    {
+        createGraph();
+        createRender();
+    }
 }
 
 void VideoCapture::uninitialize()
@@ -634,7 +636,7 @@ void VideoCapture::uninitialize()
     freeDevices();
 }
 
-void VideoCapture::enumDevices()
+int VideoCapture::enumDevices()
 {
     ICreateDevEnum *pDevEnum;
     IEnumMoniker *pEnumMoniker;
@@ -652,7 +654,7 @@ void VideoCapture::enumDevices()
     if (FAILED(hr))
     {
         std::cout<<"CreateDevEnum failed "<<hr<<std::endl;
-        return;
+        return 0;
     }
 
     hr = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory,
@@ -667,7 +669,7 @@ void VideoCapture::enumDevices()
     if (FAILED(hr))
     {
         std::cout<<"Create CreateClassEnumerator failed"<<std::endl;
-        return;
+        return 0;
     }
 
     pDevEnum->Release();
@@ -684,16 +686,19 @@ void VideoCapture::enumDevices()
             if (FAILED(hr))
             {
                 std::cout<<"IMoniker.BindToObject failed"<<std::endl;
-                return;
             }
-            deviceList.emplace_back(var.bstrVal,pSourceFilter);
-            enumFormats(deviceList.back().pCaptureStreamConfig,deviceList.back().formatList);
+            else
+            {   
+                deviceList.emplace_back(var.bstrVal, pSourceFilter);
+                enumFormats(deviceList.back().pCaptureStreamConfig, deviceList.back().formatList);
+            }
         }
         VariantClear(&var);
         pPropertyBag->Release();
         pMoniker->Release();
     }
     pEnumMoniker->Release();
+    return deviceList.size();
 }
 
 
@@ -711,7 +716,6 @@ void VideoCapture::enumFormats(IAMStreamConfig* pAMStreamConfig, std::vector<For
         std::cout << "IAMStreamConfig.GetNumberOfCapabilities failed" << std::endl;
         return;
     }
-
 
     for (int i = 0; i < piCount; i++)
     {
@@ -733,7 +737,6 @@ void VideoCapture::enumFormats(IAMStreamConfig* pAMStreamConfig, std::vector<For
         }
     }
 }
-
 
 void VideoCapture::createRender()
 {
@@ -787,16 +790,8 @@ void VideoCapture::releaseGraph()
     }
 }
 
-
 void VideoCapture::printDevices()
 {
-    //for (auto& item : devices)
-    //{
-    //    std::wcout<<L"\nDEVICE: "<< item.name <<L"\n  PORT: Capture (for video image)"<<std::endl;
-    //    printPinInfo(item.pFilter,L"Capture");
-    //    std::wcout<<L"\nDEVICE: "<< item.name <<L"\n  PORT: Still (for still image)"<<std::endl;
-    //    printPinInfo(item.pFilter,L"Still");
-    //}
     for (auto& device : deviceList)
     {
         std::wcout<<L"Device Name:"<<device.name<<std::endl;
@@ -812,7 +807,7 @@ const std::vector<std::wstring>& VideoCapture::getDeviceNameList()
     deviceNameList.clear();
     for (auto& device : deviceList)
     {
-        std::wcout<<device.name<<std::endl;
+        //std::wcout<<device.name<<std::endl;
         deviceNameList.emplace_back(device.name);
     }
     return deviceNameList;
@@ -827,7 +822,7 @@ const std::vector<std::wstring>& VideoCapture::getFormatNameList(const wchar_t* 
         {
             for (auto& format : device.formatList)
             {
-                std::wcout<<format.typeName<<std::endl;
+                //std::wcout<<format.typeName<<std::endl;
                 uniqueAppend(formatNameList,format.typeName);
             }
         }
@@ -846,7 +841,7 @@ const std::vector<std::wstring>& VideoCapture::getResolutionList(const wchar_t* 
             {
                 if (format.typeName.compare(pFormatName) == 0)
                 {
-                    std::wcout<<format.resolution<<std::endl;
+                    //std::wcout<<format.resolution<<std::endl;
                     resolutionList.emplace_back(format.resolution);
                 }
             }
@@ -868,12 +863,6 @@ void VideoCapture::clean()
         pIMediaEventEx->Release();
         pIMediaEventEx = nullptr;
     }
-
-    //if (pStillCapCB)
-    //{
-    //    delete pStillCapCB;
-    //    pStillCapCB = nullptr;
-    //}
 
     //disconnect and remove filters connected with device source filter
     if (pCurrentDevice)
@@ -899,9 +888,9 @@ void VideoCapture::addDeviceFilter(
 {
     //create source filter and set format
     pCurrentDevice = getDevice(pDeviceName);
-    if (!pCurrentDevice || !pCurrentDevice->pFilter)
+    if (!pCurrentDevice)
     {
-        std::wcout << pDeviceName << L" is not found" << std::endl;
+        std::wcout << L"IN addDeviceFilter: " << pDeviceName << L" is not found" << std::endl;
         return;
     }
 
@@ -917,7 +906,7 @@ void VideoCapture::setDeviceFilter()
     HRESULT hr;
     if (!pCurrentDevice || !pCurrentFormat)
     {
-        std::cout << "No valid device or format is found" << std::endl;
+        std::cout << "IN setDeviceFilter: No valid device or format is found" << std::endl;
         return;
     }
 
@@ -935,12 +924,23 @@ void VideoCapture::setDeviceFilter()
 
 void VideoCapture::addVmr()
 {
+    if (!pIGraphBuilder || !pVmr)
+    {
+        std::cout << "IN addVmr: Initialization not completed" << std::endl;
+        return;
+    }
+
     HRESULT hr = pIGraphBuilder->AddFilter(pVmr->pFilter, L"Video Mixing Renderer");
     if (FAILED(hr)) std::cout << "GraphBuilder.AddFilter vmr failed" << pVmr->pFilter << std::endl;
 }
 
 void VideoCapture::renderVmr(HWND hWin)
 {
+    if (!pCurrentDevice)
+    {
+        std::cout << "IN renderVmr: Device not found" << std::endl;
+        return;
+    }
     HRESULT hr = pVmr->pVMRWindowlessControl9->SetVideoClippingWindow(hWin);
     if (FAILED(hr)) std::cout << "VMRWindowlessControl9.SetVideoClippingWindow failed" << std::endl;
 
@@ -970,10 +970,13 @@ RECT VideoCapture::getCurrentVideoRect()
     return dstRect;
 }
 
-void VideoCapture::setRenderPosition(RECT& dstRect)
+void VideoCapture::setVmrRenderPosition(RECT& dstRect)
 {
-    if (!bVrmRendered) return;
-
+    if (!pVmr || !bVrmRendered)
+    {
+        std::cout << "IN setVmrRenderPosition: Vmr is not rendering" << std::endl;
+        return;
+    }
     RECT srcRect;
     HRESULT hr = pVmr->pVMRWindowlessControl9->GetNativeVideoSize(&streamWidth, &streamHeight, NULL, NULL);
     if (FAILED(hr)) std::cout << "IVMRWindowlessControl9.GetNativeVideoSize failed" << std::endl;
@@ -985,6 +988,11 @@ void VideoCapture::setRenderPosition(RECT& dstRect)
 
 void VideoCapture::notifyWindow(HWND hWin)
 {
+    if (!pIGraphBuilder)
+    {
+        std::cout << "IN notifyWindow: Initialization not completed" << std::endl;
+        return;
+    }
     HRESULT hr = pIGraphBuilder->QueryInterface(IID_IMediaEventEx, (void**)&pIMediaEventEx);
     if (FAILED(hr)) std::cout << "GraphBuilder.QueryInterface IMediaEventEx failed" << std::endl;
 
@@ -1000,72 +1008,22 @@ void VideoCapture::setup(
     RECT& dstRect,
     HDC hMemDc)
 {
-    std::cout<<"IN setup"<<std::endl;
-
     addDeviceFilter(pDeviceName, pFormatName, pResolution);
     setDeviceFilter();
     addVmr();
-    //setVmr();
     renderVmr(hWin);
-    setRenderPosition(dstRect);
+    setVmrRenderPosition(dstRect);
     overlapLogo(hMemDc, dstRect.right, dstRect.bottom);
     addGrabber();
-    //setGrabber();
     renderGrabber();
     notifyWindow(hWin);
 }
-/*
-void VideoCapture::renderCapture(HWND hWin, RECT& dstRect)
-{
-    std::cout<<"IN renderCapture"<<std::endl;
-
-    //create vmr9 filter
-    HRESULT hr = CoCreateInstance(CLSID_VideoMixingRenderer9,
-                          NULL, 
-                          CLSCTX_INPROC,
-                          IID_IBaseFilter,
-                          (void**)&pVMRFilter); 
-    assert(SUCCEEDED(hr));
-    hr = pIGraphBuilder->AddFilter(pVMRFilter, L"Video Mixing Renderer");
-    assert(SUCCEEDED(hr));
-
-    //set windowless mode
-    IVMRFilterConfig9* pIVMRFilterConfig = nullptr;
-    hr = pVMRFilter->QueryInterface(IID_IVMRFilterConfig9, (void**)&pIVMRFilterConfig);
-    assert(SUCCEEDED(hr));
-    hr = pIVMRFilterConfig->SetRenderingMode(VMR9Mode_Windowless);
-    assert(SUCCEEDED(hr));
-    pIVMRFilterConfig->Release(); 
-
-    //set randered window
-    hr = pVMRFilter->QueryInterface(IID_IVMRWindowlessControl9, (void**)&pIVMRWindowlessControl9);
-    assert(SUCCEEDED(hr));
-    hr = pIVMRWindowlessControl9->SetVideoClippingWindow(hWin);
-    assert(SUCCEEDED(hr));
-
-    //set position
-    RECT streamRect;
-    hr = pIVMRWindowlessControl9->GetNativeVideoSize(&streamRect.right, &streamRect.bottom, NULL, NULL);
-    assert(SUCCEEDED(hr));
-    hr = pIVMRWindowlessControl9->SetVideoPosition(&streamRect, &dstRect);
-    assert(SUCCEEDED(hr));
-    std::cout<<streamRect.right<<','<<streamRect.bottom<<"->"<<dstRect.right<<','<<dstRect.bottom<<std::endl;
-
-    //add to graph
-    hr = pICaptureGraphBuilder->RenderStream(&PIN_CATEGORY_CAPTURE,
-                                            &MEDIATYPE_Video,
-                                            pCurrentDevice->pFilter,
-                                            NULL,
-                                            pVMRFilter);
-    assert(SUCCEEDED(hr));
-}*/
 
 void VideoCapture::overlapLogo(HDC hMemDc, long width, long height)
 {
-    std::cout<<"IN overlapLogo"<<std::endl;
     HRESULT hr;
 
-    if (!pVmr || !pVmr->pFilter) return;
+    if (!pVmr || !bVrmRendered) return;
 
     VMR9AlphaBitmap infoBmp;
     infoBmp.dwFlags = VMR9AlphaBitmap_hDC;
@@ -1076,7 +1034,7 @@ void VideoCapture::overlapLogo(HDC hMemDc, long width, long height)
     infoBmp.rDest.top = 1.0f - ((float)32 / (float)height);
     infoBmp.rDest.right = ((float)32 / (float)width);
     infoBmp.rDest.bottom = 1.0f;
-    infoBmp.fAlpha = 0.25;
+    infoBmp.fAlpha = 0.2;
     infoBmp.clrSrcKey = 0;
     infoBmp.dwFilterMode = 0;
 
@@ -1086,9 +1044,13 @@ void VideoCapture::overlapLogo(HDC hMemDc, long width, long height)
 
 void VideoCapture :: addGrabber()
 {
-    std::cout << "IN addGrabber" << std::endl;
     HRESULT hr;
 
+    if (!pIGraphBuilder || !pGrab)
+    {
+        std::cout << "IN addGrabber: Initialization not completed" << std::endl;
+        return;
+    }
     hr = pIGraphBuilder->AddFilter(pGrab->pGrabberFilter, L"Sample Grabber");
     if (FAILED(hr)) std::cout << "GraphBuilder.AddFilter failed" << std::endl;
 
@@ -1099,8 +1061,14 @@ void VideoCapture :: addGrabber()
 
 void VideoCapture::renderGrabber()
 {
-    std::cout << "IN renderGrabber" << std::endl;
     HRESULT hr;
+
+    if (!pCurrentDevice)
+    {
+        std::cout << "IN renderGrabber: Device not found" << std::endl;
+        return;
+    }
+
     hr = pICaptureGraphBuilder->RenderStream(
         &PIN_CATEGORY_STILL, // Connect this pin ...
         &MEDIATYPE_Video,    // with this media type ...
@@ -1108,49 +1076,6 @@ void VideoCapture::renderGrabber()
         pGrab->pGrabberFilter,          // to the Sample Grabber ...
         pGrab->pNullFilter);              // ... and finally to the Null Renderer.
     if (FAILED(hr)) std::cout << "CaptureGraphBuilder.RenderStream failed" << std::endl;
-}
-
-void VideoCapture::renderStill()
-{
-    std::cout<<"IN renderStill"<<std::endl;
-
-
-    /*
-    pPinStill = getFilterPin(pCurrentDevice->pFilter,L"Still");
-    assert(pPinStill);
-    IAMStreamConfig* pIAMStreamConfig = nullptr;
-    hr = pPinStill->QueryInterface(IID_IAMStreamConfig, (void**)&pIAMStreamConfig);
-    assert(SUCCEEDED(hr));
-    pIAMStreamConfig->Release();*/
-
-
-    /*
-    IAMVideoControl *pIAMVideoControl = nullptr;
-    hr = pCurrentDevice->pFilter->QueryInterface(IID_IAMVideoControl, (void**)&pIAMVideoControl);
-    if (FAILED(hr)) std::cout << "AMStreamConfig.SetFormat failed" << std::endl;
-    pIAMVideoControl->Release();
-    */
-    
-    //create sample grabber filter
-
-
-    //set sampler grabber format
-
-    /*
-    //create null render
-    hr = CoCreateInstance(
-        CLSID_NullRenderer, 
-        NULL, 
-        CLSCTX_INPROC_SERVER,
-        IID_IBaseFilter, 
-        (void**)&pNullFilter
-        );
-    assert(SUCCEEDED(hr));*/
-    
-    
-    
-    
-    std::cout<<"renderStill() OK" <<std::endl;
 }
 
 void VideoCapture::start()
@@ -1164,8 +1089,6 @@ void VideoCapture::start()
     assert(SUCCEEDED(hr));
     pIMediaControl->Release();
     bStreamStarted = true;
-
-    std::cout<<"start ok"<<std::endl;
 }
 
 void VideoCapture::stop()
@@ -1180,7 +1103,6 @@ void VideoCapture::stop()
     pMediaControl->Release();
     bStreamStarted = false;
 
-    std::cout<<"stop ok"<<std::endl;
 }
 
 void VideoCapture::snap()
@@ -1195,9 +1117,9 @@ void VideoCapture::snap()
 
 void VideoCapture::paint(HWND hWin, HDC hdc)
 {
-    if (!pVmr || !pVmr->pVMRWindowlessControl9)
+    if (!pVmr || !bStreamStarted)
     {
-        std::cout << "vmr is not found" << std::endl;
+        std::cout << "IN paint: Vmr is not rendering" << std::endl;
         return;
     }
     pVmr->pVMRWindowlessControl9->RepaintVideo(hWin, hdc);
@@ -1207,6 +1129,7 @@ void VideoCapture::paint(HWND hWin, HDC hdc)
 void VideoCapture::startCapture()
 {
     DWORD threadId;
+    if (!bVrmRendered) return;
     HANDLE hThread = CreateThread( 
         0,                   // default security attributes
         0,                      // use default stack size  
@@ -1413,9 +1336,9 @@ void* VideoCapture::getCurrentFrame()
     BYTE* lpCurrImage = nullptr;
     HRESULT hr;
 
-    if (!pVmr || !pVmr->pFilter)
+    if (!pVmr || !bVrmRendered)
     {
-        std::cout<< "VMR not found" <<std::endl;
+        std::cout << "IN getCurrentFrame: Vmr is not in rendering" << std::endl;
         return nullptr;
     }
     
@@ -1426,7 +1349,6 @@ void* VideoCapture::getCurrentFrame()
         return nullptr;
     }
     
-    std::cout<<"getCurrentFrame OK"<<std::endl;
     return reinterpret_cast<void*>(lpCurrImage);
 }
 

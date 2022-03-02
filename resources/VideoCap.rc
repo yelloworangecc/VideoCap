@@ -1,2 +1,5 @@
 ID_ICON_APP        ICON            "favicon.ico"
 ID_BMP_APP         BITMAP          "favicon.bmp"
+ID_BMP_IMAGE       BITMAP          "image.bmp"
+ID_BMP_VIDEO       BITMAP          "video.bmp"
+ID_BMP_VIDEO_OFF   BITMAP          "video-off.bmp"

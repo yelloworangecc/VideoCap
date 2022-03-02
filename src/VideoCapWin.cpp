@@ -8,6 +8,8 @@
 #include "resource.h"
 #include "VideoCapWin.h"
 
+#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='AMD64' publicKeyToken='6595b64144ccf1df' language='*'\"")
+
 LRESULT CALLBACK WindowProc(HWND hwnd,
     UINT uMsg,
     WPARAM wParam,
@@ -29,6 +31,10 @@ void VideoCapWin::create(HINSTANCE hApp)
 
     RegisterClassEx(&wc);
 
+    hBmpImage = LoadBitmap(hApp, L"ID_BMP_IMAGE");
+    hBmpVideo = LoadBitmap(hApp, L"ID_BMP_VIDEO");
+    hBmpVideoOff = LoadBitmap(hApp, L"ID_BMP_VIDEO_OFF");
+
     hWin = CreateWindowEx(
         0, // Optional window styles.
         CLASS_NAME, // Window class
@@ -47,13 +53,27 @@ void VideoCapWin::create(HINSTANCE hApp)
     int startX = CTRL_GRAP;
     const RECT& videoRect = getTargetVideoRect();
 
+    hDeviceStatic = CreateWindowEx(
+        0,
+        WC_STATIC,
+        L"Camera",
+        SS_LEFT | SS_SIMPLE | WS_CHILD | WS_VISIBLE,
+        startX,
+        videoRect.bottom + CTRL_GRAP,
+        DEVICE_COMBO_WIDTH,
+        STATIC_HEIGHT,
+        hWin,
+        (HMENU)IDC_DEVICE_STATIC,
+        hApp,
+        NULL);
+
     hDeviceCombo = CreateWindowEx(
         0,
         WC_COMBOBOX,
         NULL, 
-        CBS_DROPDOWN | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
+        CBS_DROPDOWN | CBS_HASSTRINGS | WS_CHILD | WS_VISIBLE,
         startX,
-        videoRect.bottom + CTRL_GRAP,
+        videoRect.bottom + CTRL_GRAP + STATIC_HEIGHT,
         DEVICE_COMBO_WIDTH,
         COMBO_HEIGHT,
         hWin,
@@ -62,13 +82,27 @@ void VideoCapWin::create(HINSTANCE hApp)
         NULL);
     startX += (DEVICE_COMBO_WIDTH + CTRL_GRAP);
 
+    hFormatStatic = CreateWindowEx(
+        0,
+        WC_STATIC,
+        L"Format",
+        SS_LEFT | SS_SIMPLE | WS_CHILD | WS_VISIBLE,
+        startX,
+        videoRect.bottom + CTRL_GRAP,
+        DEVICE_COMBO_WIDTH,
+        STATIC_HEIGHT,
+        hWin,
+        (HMENU)IDC_FORMAT_STATIC,
+        hApp,
+        NULL);
+
     hFormatCombo = CreateWindowEx(
         0,
         WC_COMBOBOX,
         NULL, 
         CBS_DROPDOWN | CBS_HASSTRINGS | WS_CHILD | WS_OVERLAPPED | WS_VISIBLE,
         startX,
-        videoRect.bottom + CTRL_GRAP,
+        videoRect.bottom + CTRL_GRAP + STATIC_HEIGHT,
         FORMAT_COMBO_WIDTH,
         COMBO_HEIGHT,
         hWin,
@@ -92,13 +126,27 @@ void VideoCapWin::create(HINSTANCE hApp)
         NULL);
     startX += (RESOLUTION_COMBO_WIDTH + CTRL_GRAP);
 
+    hResolutionStatic = CreateWindowEx(
+        0,
+        WC_STATIC,
+        L"Resolution",
+        SS_LEFT | SS_SIMPLE | WS_CHILD | WS_VISIBLE,
+        startX,
+        videoRect.bottom + CTRL_GRAP,
+        DEVICE_COMBO_WIDTH,
+        STATIC_HEIGHT,
+        hWin,
+        (HMENU)IDC_RESOLUTION_STATIC,
+        hApp,
+        NULL);
+
     hSnapButton = CreateWindowEx(     
         0,
         WC_BUTTON,                             
-        L"SNAP",                                                       
-        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_DEFPUSHBUTTON,                            
+        L"Snapshot",                                                       
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_DEFPUSHBUTTON,
         startX,
-        videoRect.bottom + CTRL_GRAP, 
+        videoRect.bottom + CTRL_GRAP + STATIC_HEIGHT,
         BUTTON_WIDTH,
         BUTTON_HEIGHT,                            
         hWin,                             
@@ -106,13 +154,13 @@ void VideoCapWin::create(HINSTANCE hApp)
         hApp,        
         NULL);
     startX += (BUTTON_WIDTH + CTRL_GRAP);
-
+    SendMessage(hSnapButton, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hBmpImage);
     
     hCaptureButton = CreateWindowEx(     
         0,
         WC_BUTTON,                             
-        L"START Cap",                                                       
-        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_DEFPUSHBUTTON,                            
+        L"Record",                                                       
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_DEFPUSHBUTTON,
         startX,
         videoRect.bottom + CTRL_GRAP,
         BUTTON_WIDTH,
@@ -122,6 +170,14 @@ void VideoCapWin::create(HINSTANCE hApp)
         hApp,        
         NULL);
     startX += (BUTTON_WIDTH + CTRL_GRAP);
+    SendMessage(hCaptureButton, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hBmpVideo);
+}
+
+void VideoCapWin::destory()
+{
+    DeleteObject(hBmpImage);
+    DeleteObject(hBmpVideo);
+    DeleteObject(hBmpVideoOff);
 }
 
 void VideoCapWin::show()
@@ -141,31 +197,61 @@ void VideoCapWin::setVideoSize(int width, int height)
         SWP_NOMOVE);
 
     int startX = CTRL_GRAP;
+
+    SetWindowPos(
+        hDeviceStatic,
+        0,
+        startX,
+        height + CTRL_GRAP,
+        0,
+        0,
+        SWP_NOSIZE);
+
     SetWindowPos(
         hDeviceCombo,
         0,
         startX,
-        height+CTRL_GRAP,
+        height+CTRL_GRAP+STATIC_HEIGHT,
         0,
         0,
         SWP_NOSIZE);
     
     startX += (DEVICE_COMBO_WIDTH + CTRL_GRAP);
+
+    SetWindowPos(
+        hFormatStatic,
+        0,
+        startX,
+        height + CTRL_GRAP,
+        0,
+        0,
+        SWP_NOSIZE);
+
     SetWindowPos(
         hFormatCombo,
         0,
         startX,
-        height+CTRL_GRAP,
+        height+CTRL_GRAP+STATIC_HEIGHT,
         0,
         0,
         SWP_NOSIZE);
 
     startX += (FORMAT_COMBO_WIDTH + CTRL_GRAP);
+
+    SetWindowPos(
+        hResolutionStatic,
+        0,
+        startX,
+        height + CTRL_GRAP,
+        0,
+        0,
+        SWP_NOSIZE);
+
     SetWindowPos(
         hResolutionCombo,
         0,
         startX,
-        height+CTRL_GRAP,
+        height+CTRL_GRAP+STATIC_HEIGHT,
         0,
         0,
         SWP_NOSIZE);
@@ -194,9 +280,18 @@ void VideoCapWin::setVideoSize(int width, int height)
 
 }
 
-void VideoCapWin::setCaptureButtonText(const wchar_t* text)
+void VideoCapWin::setCaptureButton(int status)
 {
-    SetWindowText(hCaptureButton,text);
+    if (status == 1)
+    {
+        SendMessage(hCaptureButton, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hBmpVideo);
+        SetWindowText(hCaptureButton, L"Record");
+    }
+    else
+    {
+        SendMessage(hCaptureButton, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hBmpVideoOff);
+        SetWindowText(hCaptureButton, L"Stop");
+    }
 }
 
 const RECT& VideoCapWin::getTargetVideoRect()

@@ -27,6 +27,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
     int xPos, yPos;
     switch (uMsg)
     {
+    case WM_CTLCOLORSTATIC:
+        return (LRESULT)COLOR_BTNFACE;
     case WM_MOUSEMOVE:
         xPos = LOWORD(lParam);
         yPos = HIWORD(lParam);
