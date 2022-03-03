@@ -218,7 +218,7 @@ void VideoCapController::onSize()
 {
     RECT rect = window.getTargetVideoRect();
     capture.setVmrRenderPosition(rect);
-    RedrawWindow(window.getHandle(), 0, 0, RDW_ERASE | RDW_INVALIDATE);
+    window.redraw();
 }
 
 void VideoCapController::onSnap()

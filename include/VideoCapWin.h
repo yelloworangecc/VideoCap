@@ -41,6 +41,7 @@ public:
     void setVideoSize(int width, int height);
     void setCaptureButton(int status);
     const RECT& getTargetVideoRect();
+    void redraw();
 
     int getDeviceComboIndex();
     int getFormatComboIndex();

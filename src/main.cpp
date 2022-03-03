@@ -25,9 +25,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
 {
     VideoCapController& controller = VideoCapController::getInstance();
     int xPos, yPos;
+    //HDC hdc;
     switch (uMsg)
     {
     case WM_CTLCOLORSTATIC:
+        //hdc = (HDC)wParam;
+        //SetTextColor(hdc, COLOR_BACKGROUND);
+        //SetBkColor(hdc, COLOR_BTNFACE);
         return (LRESULT)COLOR_BTNFACE;
     case WM_MOUSEMOVE:
         xPos = LOWORD(lParam);

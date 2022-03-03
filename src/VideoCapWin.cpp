@@ -57,7 +57,7 @@ void VideoCapWin::create(HINSTANCE hApp)
         0,
         WC_STATIC,
         L"Camera",
-        SS_LEFT | SS_SIMPLE | WS_CHILD | WS_VISIBLE,
+        SS_LEFTNOWORDWRAP | WS_CHILD | WS_VISIBLE,
         startX,
         videoRect.bottom + CTRL_GRAP,
         DEVICE_COMBO_WIDTH,
@@ -86,10 +86,10 @@ void VideoCapWin::create(HINSTANCE hApp)
         0,
         WC_STATIC,
         L"Format",
-        SS_LEFT | SS_SIMPLE | WS_CHILD | WS_VISIBLE,
+        SS_LEFTNOWORDWRAP | WS_CHILD | WS_VISIBLE,
         startX,
         videoRect.bottom + CTRL_GRAP,
-        DEVICE_COMBO_WIDTH,
+        FORMAT_COMBO_WIDTH,
         STATIC_HEIGHT,
         hWin,
         (HMENU)IDC_FORMAT_STATIC,
@@ -111,6 +111,20 @@ void VideoCapWin::create(HINSTANCE hApp)
         NULL);
     startX += (FORMAT_COMBO_WIDTH + CTRL_GRAP);
 
+    hResolutionStatic = CreateWindowEx(
+        0,
+        WC_STATIC,
+        L"Resolution",
+        SS_LEFTNOWORDWRAP | WS_CHILD | WS_VISIBLE,
+        startX,
+        videoRect.bottom + CTRL_GRAP,
+        RESOLUTION_COMBO_WIDTH,
+        STATIC_HEIGHT,
+        hWin,
+        (HMENU)IDC_RESOLUTION_STATIC,
+        hApp,
+        NULL);
+
     hResolutionCombo = CreateWindowEx(
         0,
         WC_COMBOBOX,
@@ -124,21 +138,8 @@ void VideoCapWin::create(HINSTANCE hApp)
         (HMENU)IDC_RESOLUTION_COMBO,
         hApp,
         NULL);
-    startX += (RESOLUTION_COMBO_WIDTH + CTRL_GRAP);
 
-    hResolutionStatic = CreateWindowEx(
-        0,
-        WC_STATIC,
-        L"Resolution",
-        SS_LEFT | SS_SIMPLE | WS_CHILD | WS_VISIBLE,
-        startX,
-        videoRect.bottom + CTRL_GRAP,
-        DEVICE_COMBO_WIDTH,
-        STATIC_HEIGHT,
-        hWin,
-        (HMENU)IDC_RESOLUTION_STATIC,
-        hApp,
-        NULL);
+    startX += (RESOLUTION_COMBO_WIDTH + CTRL_GRAP);
 
     hSnapButton = CreateWindowEx(     
         0,
@@ -299,6 +300,14 @@ const RECT& VideoCapWin::getTargetVideoRect()
     GetClientRect(hWin, &clientRect);
     SetRect(&videoRect, 0, 0, clientRect.right, clientRect.bottom - TOOLBAR_HEIGHT);
     return videoRect;
+}
+
+void VideoCapWin::redraw()
+{
+    //RedrawWindow(hDeviceStatic, 0, 0, RDW_ERASE | RDW_INVALIDATE);
+    //RedrawWindow(hFormatStatic, 0, 0, RDW_ERASE | RDW_INVALIDATE);
+    //RedrawWindow(hResolutionStatic, 0, 0, RDW_ERASE | RDW_INVALIDATE);
+    RedrawWindow(hWin, 0, 0, RDW_ERASE | RDW_INVALIDATE);
 }
 
 int VideoCapWin::getDeviceComboIndex()
