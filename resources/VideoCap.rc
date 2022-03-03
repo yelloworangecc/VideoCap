@@ -1,5 +1,23 @@
+#include "resource.h"
+
 ID_ICON_APP        ICON            "favicon.ico"
 ID_BMP_APP         BITMAP          "favicon.bmp"
 ID_BMP_IMAGE       BITMAP          "image.bmp"
 ID_BMP_VIDEO       BITMAP          "video.bmp"
 ID_BMP_VIDEO_OFF   BITMAP          "video-off.bmp"
+
+STRINGTABLE
+BEGIN
+IDS_CAMERA_en      L"Camera"
+IDS_CAMERA_zh      L"\x6444\x50cf\x673a"
+IDS_FORMAT_en      L"Format"
+IDS_FORMAT_zh      L"\x56fe\x50cf\x683c\x5f0f"
+IDS_RESOLUTION_en  L"Resolution"
+IDS_RESOLUTION_zh  L"\x5206\x8fa8\x7387"
+IDS_SNAPSHOT_en    L"Snapshot"
+IDS_SNAPSHOT_zh    L"\x622a\x56fe"
+IDS_RECORD_en      L"Record"
+IDS_RECORD_zh      L"\x5f55\x5236"
+IDS_STOP_en        L"Stop"
+IDS_STOP_zh        L"\x505c\x6b62"
+END

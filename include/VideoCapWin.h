@@ -20,6 +20,8 @@
 
 #define COMBO_TEXT_BUFFER_LEN 128
 
+#define LANGUAGE_STRING_MAX_SIZE 1024
+
 /**V I D E O   C A P   W I N***********************************************
  * Create: BY Huang Cheng(chhuang@kns.com) ON 2022211
  * Description: A window for video capture application
@@ -34,7 +36,7 @@ public:
     VideoCapWin(){}
     ~VideoCapWin(){}
 
-    void create(HINSTANCE hApp);
+    void create(HINSTANCE hApp, const std::string & languageCode);
     void destory();
     HWND getHandle(){return hWin;}
     void show();
@@ -53,6 +55,8 @@ public:
     void setupFormatCombo(const std::vector<std::wstring>& list, int index = 0);
     void setupResolutionCombo(const std::vector<std::wstring>& list, int index = 0);
     void setupCombo(HWND hwnd, const std::vector<std::wstring>& list, int index = 0);
+
+    const wchar_t* loadString(int ids);
 
 private:
     HINSTANCE hApp;
@@ -73,6 +77,9 @@ private:
     wchar_t deviceTextBuffer[COMBO_TEXT_BUFFER_LEN];
     wchar_t formatTextBuffer[COMBO_TEXT_BUFFER_LEN];
     wchar_t resolutionTextBuffer[COMBO_TEXT_BUFFER_LEN];
+
+    std::string languageCode;
+    wchar_t languageStrBuff[LANGUAGE_STRING_MAX_SIZE];
 };
 
 #endif

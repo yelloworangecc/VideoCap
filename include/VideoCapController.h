@@ -10,6 +10,7 @@
 #define KEY_FORMAT            "Format"
 #define KEY_RESOLUTION        "Resolution"
 #define KEY_SAVE_PATH         "SavePath"
+#define KEY_LANGUAGE_CODE     "LanguageCode"
 
 /**V I D E O   C A P   C O N T R O L L E R . H*****************************
  * Create: BY Huang Cheng(chhuang@kns.com) ON 2022211

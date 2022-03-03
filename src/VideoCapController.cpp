@@ -54,9 +54,13 @@ void VideoCapController::showWindow()
 void VideoCapController::initialize(HINSTANCE hApp)
 {
     this->hApp = hApp;
-    window.create(hApp);
+
+    if (!settings.exist(KEY_LANGUAGE_CODE)) settings.set(KEY_LANGUAGE_CODE, "en");
+    window.create(hApp, settings.get<std::string>(KEY_LANGUAGE_CODE));
+
     if (!settings.exist(KEY_SAVE_PATH)) settings.set(KEY_SAVE_PATH,"");
     capture.initialize(settings.get<std::string>(KEY_SAVE_PATH));
+
     loadLogo(L"ID_BMP_APP");
 }
 

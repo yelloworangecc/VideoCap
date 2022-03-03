@@ -16,9 +16,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd,
     LPARAM lParam);
 
 
-void VideoCapWin::create(HINSTANCE hApp)
+void VideoCapWin::create(HINSTANCE hApp, const std::string & languageCode)
 {
     this->hApp = hApp;
+    this->languageCode = languageCode;
 
     const wchar_t CLASS_NAME[]  = L"VideoCap";
 
@@ -56,7 +57,7 @@ void VideoCapWin::create(HINSTANCE hApp)
     hDeviceStatic = CreateWindowEx(
         0,
         WC_STATIC,
-        L"Camera",
+        loadString(IDS_CAMERA),
         SS_LEFTNOWORDWRAP | WS_CHILD | WS_VISIBLE,
         startX,
         videoRect.bottom + CTRL_GRAP,
@@ -85,7 +86,7 @@ void VideoCapWin::create(HINSTANCE hApp)
     hFormatStatic = CreateWindowEx(
         0,
         WC_STATIC,
-        L"Format",
+        loadString(IDS_FORMAT),
         SS_LEFTNOWORDWRAP | WS_CHILD | WS_VISIBLE,
         startX,
         videoRect.bottom + CTRL_GRAP,
@@ -114,7 +115,7 @@ void VideoCapWin::create(HINSTANCE hApp)
     hResolutionStatic = CreateWindowEx(
         0,
         WC_STATIC,
-        L"Resolution",
+        loadString(IDS_RESOLUTION),
         SS_LEFTNOWORDWRAP | WS_CHILD | WS_VISIBLE,
         startX,
         videoRect.bottom + CTRL_GRAP,
@@ -144,7 +145,7 @@ void VideoCapWin::create(HINSTANCE hApp)
     hSnapButton = CreateWindowEx(     
         0,
         WC_BUTTON,                             
-        L"Snapshot",                                                       
+        loadString(IDS_SNAPSHOT),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_DEFPUSHBUTTON,
         startX,
         videoRect.bottom + CTRL_GRAP + STATIC_HEIGHT,
@@ -160,7 +161,7 @@ void VideoCapWin::create(HINSTANCE hApp)
     hCaptureButton = CreateWindowEx(     
         0,
         WC_BUTTON,                             
-        L"Record",                                                       
+        loadString(IDS_RECORD),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_DEFPUSHBUTTON,
         startX,
         videoRect.bottom + CTRL_GRAP,
@@ -286,12 +287,12 @@ void VideoCapWin::setCaptureButton(int status)
     if (status == 1)
     {
         SendMessage(hCaptureButton, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hBmpVideo);
-        SetWindowText(hCaptureButton, L"Record");
+        SetWindowText(hCaptureButton, loadString(IDS_RECORD));
     }
     else
     {
         SendMessage(hCaptureButton, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hBmpVideoOff);
-        SetWindowText(hCaptureButton, L"Stop");
+        SetWindowText(hCaptureButton, loadString(IDS_STOP));
     }
 }
 
@@ -373,4 +374,17 @@ void VideoCapWin::setupCombo(HWND hwnd, const std::vector<std::wstring>& list, i
     SendMessage(hwnd, CB_SETCURSEL, (WPARAM)index, (LPARAM)0);
 }
 
-
+const wchar_t* VideoCapWin::loadString(int ids)
+{
+    if (languageCode.compare("zh") == 0)
+    {
+        std::cout << "zh" << std::endl;
+        LoadString(hApp, ids + ID_LANGUAGE_OFFSET_zh, languageStrBuff, LANGUAGE_STRING_MAX_SIZE);
+    }
+    else
+    {
+        std::cout << "en" << std::endl;
+        LoadString(hApp, ids + ID_LANGUAGE_OFFSET_en, languageStrBuff, LANGUAGE_STRING_MAX_SIZE);
+    }
+    return languageStrBuff;
+}
