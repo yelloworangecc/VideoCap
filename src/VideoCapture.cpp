@@ -871,9 +871,9 @@ void VideoCapture::clean()
         pCurrentDevice = nullptr;
     }
 
-    //also remove device source filter
     if (pIGraphBuilder)
     {
+        //also remove device source filter
         removeAll();
         pCurrentFormat = nullptr;
     }
@@ -886,6 +886,7 @@ void VideoCapture::addDeviceFilter(
     const wchar_t* pFormatName,
     const wchar_t* pResolution )
 {
+    std::wcout<< pDeviceName << L',' << pFormatName << L',' << pResolution << std::endl;
     //create source filter and set format
     pCurrentDevice = getDevice(pDeviceName);
     if (!pCurrentDevice)
@@ -894,7 +895,7 @@ void VideoCapture::addDeviceFilter(
         return;
     }
 
-    HRESULT hr = pIGraphBuilder->AddFilter(pCurrentDevice->pFilter, L"Capture Filter");
+    HRESULT hr = pIGraphBuilder->AddFilter(pCurrentDevice->pFilter, pCurrentDevice->name.c_str());
     if (FAILED(hr)) std::cout << "GraphBuilder AddFilter failed" << std::endl;
 
     pCurrentFormat = getFormat(pCurrentDevice->formatList, pFormatName, pResolution);
@@ -952,7 +953,7 @@ void VideoCapture::renderVmr(HWND hWin)
     if (FAILED(hr))
     {
         std::cout << "CaptureGraphBuilder.RenderStream failed" << std::endl;
-        bVrmRendered = false;
+        return;
     }
     bVrmRendered = true;
 }
@@ -1000,6 +1001,20 @@ void VideoCapture::notifyWindow(HWND hWin)
     if (FAILED(hr)) std::cout << "MediaEventEx.SetNotifyWindow failed" << std::endl;
 }
 
+void VideoCapture::setReferenceClock()
+{
+    if (!pIGraphBuilder)
+    {
+        std::cout << "IN setReferenceClock: Initialization not completed" << std::endl;
+        return;
+    }
+    IMediaFilter* pMediaFilter = nullptr;
+    pIGraphBuilder->QueryInterface(IID_IMediaFilter, (void**)&pMediaFilter);
+    pMediaFilter->SetSyncSource(0);//no reference clock, run as soon as possible
+    pMediaFilter->Release();
+    pMediaFilter = nullptr;
+}
+
 void VideoCapture::setup(
     const wchar_t* pDeviceName,
     const wchar_t* pFormatName,
@@ -1017,6 +1032,7 @@ void VideoCapture::setup(
     addGrabber();
     renderGrabber();
     notifyWindow(hWin);
+    setReferenceClock();
 }
 
 void VideoCapture::overlapLogo(HDC hMemDc, long width, long height)
@@ -1313,8 +1329,12 @@ void VideoCapture::removeAll()
 
             DebugPrintOut("SETUP: removing filter %s...\n", buffer);
             hr = pIGraphBuilder->RemoveFilter(pFilter);
-            if (FAILED(hr)) { DebugPrintOut("SETUP: pGraph->RemoveFilter() failed.\n"); return; }
-            DebugPrintOut("SETUP: filter removed %s\n",buffer);
+            if (FAILED(hr)) 
+            { 
+                DebugPrintOut("SETUP: pGraph->RemoveFilter() failed.\n"); 
+                return; 
+            }
+            std::cout<< "remove filter :" << buffer << std::endl;
 
             pFilter->Release();
             pFilter = NULL;

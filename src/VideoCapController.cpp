@@ -264,7 +264,6 @@ void VideoCapController::onFormatChanged()
     const wchar_t* pFormat = window.getFormatComboText();
     settings.set(KEY_FORMAT, Unicode2Ansi(pFormat));
     
-    std::wcout<<pDeviceName<< L'.'<<pFormat<<L'.'<<std::endl;
     updateResolutionCombo(pDeviceName,pFormat);
     
     setupVideoDevice();

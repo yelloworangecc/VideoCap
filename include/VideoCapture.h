@@ -60,6 +60,7 @@ public:
     RECT getCurrentVideoRect();
     void setVmrRenderPosition(RECT& dstRect);
     void notifyWindow(HWND hWin);
+    void setReferenceClock();
     void setup(
         const wchar_t* pDeviceName,
         const wchar_t* pFormatName,

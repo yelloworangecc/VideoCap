@@ -11,7 +11,7 @@ BEGIN
 IDS_CAMERA_en      L"Camera"
 IDS_CAMERA_zh      L"\x6444\x50cf\x673a"
 IDS_FORMAT_en      L"Format"
-IDS_FORMAT_zh      L"\x56fe\x50cf\x683c\x5f0f"
+IDS_FORMAT_zh      L"\x683c\x5f0f"
 IDS_RESOLUTION_en  L"Resolution"
 IDS_RESOLUTION_zh  L"\x5206\x8fa8\x7387"
 IDS_SNAPSHOT_en    L"Snapshot"
