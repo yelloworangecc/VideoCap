@@ -351,5 +351,5 @@ Besides OpenCV 4.5.2, this project also rely on openh264 1.8.0 for saving MP4 wi
 
 # Make Installer
 
-1. make sure the project is built and KnSMicroScope.exe exists at build\Release\
-2. run make_installer.bat, then a 7z sfx installer "knsmicroscope_installer.exe" will be create at project root
+1. make sure the project is built and VideoCap.exe exists at build\Release\
+2. run make_installer.bat, then a 7z sfx installer "videocap_installer.exe" will be create at project root
