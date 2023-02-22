@@ -1,0 +1,94 @@
+#include "resource.h"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x0L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "Kulicke & Soffa"
+            VALUE "FileDescription", "Video Cap Application"
+            VALUE "FileVersion", "1.0.0.1"
+            VALUE "InternalName", "VideoCap.rc"
+            VALUE "LegalCopyright", "Copyright (C) Kulicke & Soffa 2021"
+            VALUE "OriginalFilename", "VideoCap.exe"
+            VALUE "ProductName", "VideoCap"
+            VALUE "ProductVersion", "1.0.0.1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+ID_ICON_APP        ICON            "favicon.ico"
+ID_BMP_APP         BITMAP          "favicon.bmp"
+ID_BMP_IMAGE       BITMAP          "image.bmp"
+ID_BMP_VIDEO       BITMAP          "video.bmp"
+ID_BMP_VIDEO_OFF   BITMAP          "video-off.bmp"
+ID_BMP_CONFIG      BITMAP          "edit.bmp"
+
+STRINGTABLE
+BEGIN
+IDS_CAMERA_en           L"Camera"
+IDS_CAMERA_zh           L"\x6444\x50cf\x673a"
+IDS_FORMAT_en           L"Format"
+IDS_FORMAT_zh           L"\x683c\x5f0f"
+IDS_RESOLUTION_en       L"Resolution"
+IDS_RESOLUTION_zh       L"\x5206\x8fa8\x7387"
+IDS_SNAPSHOT_en         L"Snapshot"
+IDS_SNAPSHOT_zh         L"\x622a\x56fe"
+IDS_RECORD_en           L"Record"
+IDS_RECORD_zh           L"\x5f55\x5236"
+IDS_STOP_en             L"Stop"
+IDS_STOP_zh             L"\x505c\x6b62"
+IDS_ROTATION_en         L"Rotation"
+IDS_ROTATION_zh         L"\x65cb\x8f6c"
+IDS_GRID_INTERVAL_en    L"Grid Interval"
+IDS_GRID_INTERVAL_zh    L"\x7f51\x683c\x95f4\x8ddd"
+IDS_TITLE_HELP_en       L"Video Cap (Press 'h' for help)"
+IDS_TITLE_HELP_zh       L"Video Cap (\x6309'h'\x952e\x83b7\x5f97\x5e2e\x52a9)"
+IDS_TITLE_SAVED_en      L" saved to "
+IDS_TITLE_SAVED_zh      L"\x4fdd\x5b58\x81f3\x76ee\x5f55"
+IDS_TITLE_RECORDING_en  L"Recording"
+IDS_TITLE_RECORDING_zh  L"\x5f55\x5236\x4e2d"
+IDS_HELP_MSGBOX_T_en    L"Help Information & Hotkey"
+IDS_HELP_MSGBOX_T_zh    L"\x5e2e\x52a9\x4fe1\x606f\x548c\x5feb\x6377\x952e"
+IDS_HELP_MSGBOX_L1_en   L"Press 'CTRL+ALT+M' to Activate\nPress 'SPACE' to Pause/Freeze\nPress 's' to Snapshot\nPress 'r' to Record\nFiles will be saved to "
+IDS_HELP_MSGBOX_L1_zh   L"\x6309'CTRL+ALT+M'\x6fc0\x6d3b\x7a97\x53e3\n\x6309\x7a7a\x683c\x6682\x505c\n\x6309's'\x622a\x56fe\n\x6309'r'\x5f55\x5236\n\x6587\x4ef6\x5c06\x88ab\x4fdd\x5b58\x81f3\x76ee\x5f55"
+IDS_HELP_MSGBOX_L2_en   L"\nPress 'o' to Open directory\nClick the border region of video to Flip video"
+IDS_HELP_MSGBOX_L2_zh   L"\n\x6309'o'\x6253\x5f00\x76ee\x5f55\n\x70b9\x51fb\x89c6\x9891\x8fb9\x7f18\x53ef\x7ffb\x8f6c\x89c6\x9891"
+IDS_ERROR_MSGBOX_T_en   L"Error"
+IDS_ERROR_MSGBOX_T_zh   L"\x9519\x8bef"
+IDS_ERROR_MSGBOX_L_en   L"Application is already running, press 'CTRL+ALT+M' to activate it"
+IDS_ERROR_MSGBOX_L_zh   L"\x91cd\x590d\x8fd0\x884c,\x6309'CTRL+ALT+M'\x6fc0\x6d3b\x5df2\x6709\x7a0b\x5e8f"
+IDS_CONFIG_en           L"Config"
+IDS_CONFIG_zh           L"\x914d\x7f6e"
+IDS_LANGUAGE_en         L"Language"
+IDS_LANGUAGE_zh         L"\x8bed\x8a00"
+IDS_LANGUAGE_EN_en      L"English"
+IDS_LANGUAGE_EN_zh      L"\x82f1\x8bed"
+IDS_LANGUAGE_ZH_en      L"Chinese"
+IDS_LANGUAGE_ZH_zh      L"\x4e2d\x6587"
+IDS_SAVE_PATH_en        L"Save Path"
+IDS_SAVE_PATH_zh        L"\x4fdd\x5b58\x8def\x5f84"
+IDS_CHOOSE_PATH_en      L"Choose Directory"
+IDS_CHOOSE_PATH_zh      L"\x9009\x62e9\x6587\x4ef6\x5939"
+END

@@ -33,3 +33,10 @@
 
 # User
 build/
+*.aps
+temp/
+temp.7z
+knsmicroscope_installer.exe
+
+# Visual Studio
+.vs/

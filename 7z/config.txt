@@ -1,0 +1,4 @@
+;!@Install@!UTF-8!
+Title="KnSMicroscope Installer"
+InstallPath="d:\\oe\datamanager\\"
+;!@InstallEnd@!
